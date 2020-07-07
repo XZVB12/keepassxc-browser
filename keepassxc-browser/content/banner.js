@@ -8,7 +8,7 @@ kpxcBanner.created = false;
 kpxcBanner.credentials = {};
 kpxcBanner.wrapper = undefined;
 
-kpxcBanner.destroy = function() {
+kpxcBanner.destroy = async function() {
     kpxcBanner.created = false;
     kpxcBanner.credentials = {};
 
@@ -17,9 +17,7 @@ kpxcBanner.destroy = function() {
         kpxcBanner.banner.removeChild(dialog);
     }
 
-    browser.runtime.sendMessage({
-        action: 'remove_credentials_from_tab_information'
-    });
+    await sendMessage('remove_credentials_from_tab_information');
 
     if (kpxcBanner.wrapper && window.parent.document.body.contains(kpxcBanner.wrapper)) {
         window.parent.document.body.removeChild(kpxcBanner.wrapper);
@@ -29,23 +27,20 @@ kpxcBanner.destroy = function() {
 };
 
 kpxcBanner.create = async function(credentials = {}) {
-    const connectedDatabase = await browser.runtime.sendMessage({
-        action: 'get_connected_database'
-    });
-
+    const connectedDatabase = await sendMessage('get_connected_database');
     if (!kpxc.settings.showLoginNotifications || kpxcBanner.created || connectedDatabase.identifier === null) {
         return;
     }
 
     // Check if database is closed
-    const state = await browser.runtime.sendMessage({ action: 'check_database_hash' });
+    const state = await sendMessage('check_database_hash');
     if (state === '') {
         //kpxcUI.createNotification('error', tr('rememberErrorDatabaseClosed'));
         return;
     }
 
     // Don't show anything if the site is in the ignore
-    if (kpxc.siteIgnored(IGNORE_NORMAL)) {
+    if (await kpxc.siteIgnored(IGNORE_NORMAL)) {
         return;
     }
 
@@ -141,9 +136,7 @@ kpxcBanner.create = async function(credentials = {}) {
 };
 
 kpxcBanner.saveNewCredentials = async function(credentials = {}) {
-    const result = await browser.runtime.sendMessage({
-        action: 'get_database_groups'
-    });
+    const result = await sendMessage('get_database_groups');
 
     if (!result.defaultGroupAlwaysAsk && (result.defaultGroup !== '' && result.defaultGroup !== DEFAULT_BROWSER_GROUP)) {
         // Another group name has been specified
@@ -155,16 +148,9 @@ kpxcBanner.saveNewCredentials = async function(credentials = {}) {
             }
 
             // Create a new group
-            const newGroup = await browser.runtime.sendMessage({
-                action: 'create_new_group',
-                args: [ result.defaultGroup ]
-            });
-
+            const newGroup = await sendMessage('create_new_group', [ result.defaultGroup ]);
             if (newGroup.name && newGroup.uuid) {
-                const res = await browser.runtime.sendMessage({
-                    action: 'add_credentials',
-                    args: [ credentials.username, credentials.password, credentials.url, newGroup.name, newGroup.uuid ]
-                });
+                const res = await sendMessage('add_credentials', [ credentials.username, credentials.password, credentials.url, newGroup.name, newGroup.uuid ]);
                 kpxcBanner.verifyResult(res);
             } else {
                 kpxcUI.createNotification('error', tr('rememberErrorCreatingNewGroup'));
@@ -172,10 +158,7 @@ kpxcBanner.saveNewCredentials = async function(credentials = {}) {
             return;
         }
 
-        const res = await browser.runtime.sendMessage({
-            action: 'add_credentials',
-            args: [ credentials.username, credentials.password, credentials.url, gname, guuid ]
-        });
+        const res = await sendMessage('add_credentials', [ credentials.username, credentials.password, credentials.url, gname, guuid ]);
         kpxcBanner.verifyResult(res);
         return;
     } else if ((result.groups === undefined || (result.groups.length > 0 && result.groups[0].children.length === 0))
@@ -193,10 +176,7 @@ kpxcBanner.saveNewCredentials = async function(credentials = {}) {
             args.push(result.groups[0].name, result.groups[0].uuid);
         }
 
-        const res = await browser.runtime.sendMessage({
-            action: 'add_credentials',
-            args: args
-        });
+        const res = await sendMessage('add_credentials', args);
         kpxcBanner.verifyResult(res);
         return;
     }
@@ -227,11 +207,7 @@ kpxcBanner.saveNewCredentials = async function(credentials = {}) {
                 return;
             }
 
-            const res = await browser.runtime.sendMessage({
-                action: 'add_credentials',
-                args: [ credentials.username, credentials.password, credentials.url, group, groupUuid ]
-            });
-
+            const res = await sendMessage('add_credentials', [ credentials.username, credentials.password, credentials.url, group, groupUuid ]);
             kpxcBanner.verifyResult(res);
         });
 
@@ -264,10 +240,7 @@ kpxcBanner.updateCredentials = async function(credentials = {}) {
             credentials.username = credentials.list[0].login;
         }
 
-        const res = await browser.runtime.sendMessage({
-            action: 'update_credentials',
-            args: [ credentials.list[0].uuid, credentials.username, credentials.password, credentials.url ]
-        });
+        const res = await sendMessage('update_credentials', [ credentials.list[0].uuid, credentials.username, credentials.password, credentials.url ]);
         kpxcBanner.verifyResult(res);
     } else {
         await kpxcBanner.createCredentialDialog();
@@ -310,10 +283,7 @@ kpxcBanner.updateCredentials = async function(credentials = {}) {
                         return;
                     }
 
-                    const res = await browser.runtime.sendMessage({
-                        action: 'update_credentials',
-                        args: [ credentials.list[entryId].uuid, credentials.username, credentials.password, credentials.url ]
-                    });
+                    const res = await sendMessage('update_credentials', [ credentials.list[entryId].uuid, credentials.username, credentials.password, credentials.url ]);
                     kpxcBanner.verifyResult(res);
                 });
             });
@@ -369,9 +339,7 @@ kpxcBanner.createCredentialDialog = async function() {
     kpxcBanner.shadowSelector('#kpxc-banner-btn-update').hidden = true;
     kpxcBanner.shadowSelector('.kpxc-checkbox').disabled = true;
 
-    const connectedDatabase = await browser.runtime.sendMessage({
-        action: 'get_connected_database'
-    });
+    const connectedDatabase = await sendMessage('get_connected_database');
     const databaseName = connectedDatabase.count > 0 ? connectedDatabase.identifier : '';
 
     const dialog = kpxcUI.createElement('div', 'kpxc-banner-dialog');

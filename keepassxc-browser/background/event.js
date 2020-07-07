@@ -57,8 +57,7 @@ kpxcEvent.onLoadKeyRing = async function() {
     return item.keyRing;
 };
 
-kpxcEvent.onSaveSettings = async function(tab, args = []) {
-    const [ settings ] = args;
+kpxcEvent.onSaveSettings = async function(tab, settings) {
     browser.storage.local.set({ 'settings': settings });
     kpxcEvent.onLoadSettings(tab);
     return Promise.resolve();
@@ -193,50 +192,16 @@ kpxcEvent.onMultipleFieldsPopup = function(tab) {
     return Promise.resolve();
 };
 
-kpxcEvent.pageClearLogins = function(tab, alreadyCalled) {
-    if (!alreadyCalled) {
-        page.clearLogins(tab.id);
-    }
-    return Promise.resolve();
-};
-
-kpxcEvent.pageGetLoginId = async function() {
-    return page.loginId;
-};
-
-kpxcEvent.pageSetLoginId = function(tab, loginId) {
-    page.loginId = loginId;
-    return Promise.resolve();
-};
-
-kpxcEvent.pageClearSubmitted = function() {
-    page.clearSubmittedCredentials();
-    return Promise.resolve();
-};
-
-kpxcEvent.pageGetSubmitted = async function(tab) {
-    // Do not return any credentials if the tab ID does not match.
-    if (tab.id !== page.submittedCredentials.tabId) {
-        return {};
-    }
-    return page.submittedCredentials;
-};
-
-kpxcEvent.pageSetSubmitted = function(tab, args = []) {
-    const [ submitted, username, password, url, oldCredentials ] = args;
-    page.setSubmittedCredentials(submitted, username, password, url, oldCredentials, tab.id);
-    return Promise.resolve();
-};
-
-kpxcEvent.onUsernameFieldDetected = function(tab, detected) {
+kpxcEvent.onUsernameFieldDetected = async function(tab, detected) {
     page.usernameFieldDetected = detected;
+    return Promise.resolve();
 };
 
 kpxcEvent.passwordGetFilled = async function() {
     return page.passwordFilled;
 };
 
-kpxcEvent.passwordSetFilled = function(tab, state) {
+kpxcEvent.passwordSetFilled = async function(tab, state) {
     page.passwordFilled = state;
     return Promise.resolve();
 };
@@ -247,6 +212,13 @@ kpxcEvent.getColorTheme = async function(tab) {
 
 kpxcEvent.pageGetRedirectCount = async function() {
     return page.redirectCount;
+};
+
+kpxcEvent.pageClearLogins = async function(tab, alreadyCalled) {
+    if (!alreadyCalled) {
+        page.clearLogins(tab.id);
+    }
+    return Promise.resolve();
 };
 
 // All methods named in this object have to be declared BEFORE this!
@@ -272,12 +244,14 @@ kpxcEvent.messageHandlers = {
     'load_settings': kpxcEvent.onLoadSettings,
     'lock-database': kpxcEvent.lockDatabase,
     'page_clear_logins': kpxcEvent.pageClearLogins,
-    'page_clear_submitted': kpxcEvent.pageClearSubmitted,
-    'page_get_login_id': kpxcEvent.pageGetLoginId,
+    'page_clear_submitted': page.clearSubmittedCredentials,
+    'page_get_login_id': page.getLoginId,
+    'page_get_manual_fill': page.getManualFill,
     'page_get_redirect_count': kpxcEvent.pageGetRedirectCount,
-    'page_get_submitted': kpxcEvent.pageGetSubmitted,
-    'page_set_login_id': kpxcEvent.pageSetLoginId,
-    'page_set_submitted': kpxcEvent.pageSetSubmitted,
+    'page_get_submitted': page.getSubmitted,
+    'page_set_login_id': page.setLoginId,
+    'page_set_manual_fill': page.setManualFill,
+    'page_set_submitted': page.setSubmitted,
     'password_get_filled': kpxcEvent.passwordGetFilled,
     'password_set_filled': kpxcEvent.passwordSetFilled,
     'pop_stack': kpxcEvent.onPopStack,
@@ -285,7 +259,7 @@ kpxcEvent.messageHandlers = {
     'popup_multiple-fields': kpxcEvent.onMultipleFieldsPopup,
     'reconnect': kpxcEvent.onReconnect,
     'remove_credentials_from_tab_information': kpxcEvent.onRemoveCredentialsFromTabInformation,
-    'retrieve_credentials': keepass.retrieveCredentials,
+    'retrieve_credentials': page.retrieveCredentials,
     'show_default_browseraction': browserAction.showDefault,
     'update_credentials': keepass.updateCredentials,
     'username_field_detected': kpxcEvent.onUsernameFieldDetected,

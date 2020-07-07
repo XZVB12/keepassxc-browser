@@ -93,7 +93,9 @@ browserAction.stackPush = function(data, tabId) {
 browserAction.stackUnshift = function(data, tabId) {
     const id = tabId || page.currentTabId;
     browserAction.removeLevelFromStack({ 'id': id }, data.level, '<=', true);
-    page.tabs[id].stack.unshift(data);
+    if (page.tabs[id]) {
+        page.tabs[id].stack.unshift(data);
+    }
 };
 
 browserAction.generateIconName = function(iconType, icon) {
