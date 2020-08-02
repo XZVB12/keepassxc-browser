@@ -803,7 +803,7 @@ kpxc.fillInCredentials = async function(combination, predefinedUsername, uuid, p
     // Fill password
     if (combination.password) {
         kpxc.setValueWithChange(combination.password, selectedCredentials.password);
-        //kpxc.setPasswordFilled(true);
+        await kpxc.setPasswordFilled(true);
     }
 
     // Fill username

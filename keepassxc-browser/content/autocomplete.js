@@ -64,14 +64,14 @@ kpxcAutocomplete.showList = function(inputField) {
         const itemInput = kpxcUI.createElement('input', '', { 'type': 'hidden', 'value': c.value });
         item.append(itemInput);
 
-        item.addEventListener('click', function(e) {
+        item.addEventListener('click', async function(e) {
             if (!e.isTrusted) {
                 return;
             }
 
             // Save index for combination.loginId
             const index = Array.prototype.indexOf.call(e.currentTarget.parentElement.childNodes, e.currentTarget);
-            sendMessage('page_set_login_id', index);
+            await sendMessage('page_set_login_id', index);
 
             const usernameValue = this.getElementsByTagName('input')[0].value;
             kpxcAutocomplete.fillPassword(usernameValue, index, c.uuid);
