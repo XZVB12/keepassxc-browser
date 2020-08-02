@@ -74,7 +74,7 @@ kpxcAutocomplete.showList = function(inputField) {
             sendMessage('page_set_login_id', index);
 
             const usernameValue = this.getElementsByTagName('input')[0].value;
-            kpxcAutocomplete.fillPassword(usernameValue, index);
+            kpxcAutocomplete.fillPassword(usernameValue, index, c.uuid);
             kpxcAutocomplete.closeList();
             inputField.focus();
             document.body.removeChild(wrapper);
@@ -213,12 +213,12 @@ kpxcAutocomplete.keyPress = function(e) {
     }
 };
 
-kpxcAutocomplete.fillPassword = async function(value, index) {
+kpxcAutocomplete.fillPassword = async function(value, index, uuid) {
     const combination = await kpxcFields.getCombination(kpxcAutocomplete.input);
     combination.loginId = index;
 
     const manualFill = await sendMessage('page_get_manual_fill');
-    await kpxc.fillInCredentials(combination, value, manualFill === ManualFill.PASS);
+    await kpxc.fillInCredentials(combination, value, uuid, manualFill === ManualFill.PASS);
     kpxcAutocomplete.input.setAttribute('fetched', true);
 };
 

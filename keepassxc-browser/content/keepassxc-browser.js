@@ -702,7 +702,7 @@ kpxc.fillInFromActiveElement = async function(passOnly = false) {
         return;
     }
 
-    kpxc.fillInCredentials(combination, kpxc.credentials[0].login, passOnly);
+    kpxc.fillInCredentials(combination, kpxc.credentials[0].login, kpxc.credentials[0].uuid, passOnly);
 };
 
 // Fill requested by Auto-Fill
@@ -711,20 +711,20 @@ kpxc.fillFromAutofill = function() {
         return;
     }
 
-    kpxc.fillInCredentials(kpxc.combinations[0], kpxc.credentials[0].login);
+    kpxc.fillInCredentials(kpxc.combinations[0], kpxc.credentials[0].login, kpxc.credentials[0].uuid);
 
     // Generate popup-list of usernames + descriptions
     sendMessage('popup_login', [ `${kpxc.credentials[0].login} (${kpxc.credentials[0].name})` ]);
 };
 
 // Fill requested by selecting credentials from the popup
-kpxc.fillFromPopup = async function(id) {
+kpxc.fillFromPopup = async function(id, uuid) {
     if (!kpxc.credentials.length === 0 || !kpxc.credentials[id] || kpxc.combinations.length === 0) {
         return;
     }
 
     await sendMessage('page_set_login_id', id);
-    kpxc.fillInCredentials(kpxc.combinations[0], kpxc.credentials[id].login);
+    kpxc.fillInCredentials(kpxc.combinations[0], kpxc.credentials[id].login, uuid);
     kpxcAutocomplete.closeList();
 };
 
@@ -758,7 +758,7 @@ kpxc.fillFromUsernameIcon = function(combination) {
         return;
     }
 
-    kpxc.fillInCredentials(combination, kpxc.credentials[0].login);
+    kpxc.fillInCredentials(combination, kpxc.credentials[0].login, kpxc.credentials[0].uuid);
 };
 
 /**
@@ -766,8 +766,9 @@ kpxc.fillFromUsernameIcon = function(combination) {
  * @param {Array} combination Combination to be used
  * @param {String} predefinedUsername Predefined username. If set, there's no need to find it from combinations
  * @param {Boolean} passOnly If only password is filled
+ * @param {String} uuid Identifier for the entry. There can be identical usernames with different password
  */
-kpxc.fillInCredentials = async function(combination, predefinedUsername, passOnly = false) {
+kpxc.fillInCredentials = async function(combination, predefinedUsername, uuid, passOnly = false) {
     if (kpxc.credentials.length === 0) {
         kpxcUI.createNotification('error', tr('credentialsNoLoginsFound'));
         return;
@@ -785,7 +786,7 @@ kpxc.fillInCredentials = async function(combination, predefinedUsername, passOnl
     }
 
     // Find the correct credentials
-    const selectedCredentials = kpxc.credentials.find(c => c.login === usernameValue);
+    const selectedCredentials = kpxc.credentials.find(c => c.login === usernameValue && c.uuid === uuid);
     if (!selectedCredentials) {
         return;
     }
@@ -1062,11 +1063,12 @@ kpxc.initLoginPopup = function() {
 
     for (let i = 0; i < kpxc.credentials.length; i++) {
         const loginText = getLoginText(kpxc.credentials[i], showGroupNameInAutocomplete);
-        usernames.push(loginText);
+        usernames.push({ text: loginText, uuid: kpxc.credentials[i].uuid });
 
         kpxcAutocomplete.elements.push({
             label: loginText,
             value: kpxc.credentials[i].login,
+            uuid: kpxc.credentials[i].uuid,
             loginId: i
         });
     }
@@ -1275,6 +1277,8 @@ kpxc.setValue = function(field, value) {
 // Sets a new value to input field and triggers necessary events
 kpxc.setValueWithChange = function(field, value) {
     field.value = value;
+    field.dispatchEvent(new Event('input', { 'bubbles': true }));
+    field.dispatchEvent(new Event('change', { 'bubbles': true }));
     field.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: false, key: '', char: '' }));
     field.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true, cancelable: false, key: '', char: '' }));
     field.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: false, key: '', char: '' }));
@@ -1631,7 +1635,7 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
         } else if (req.action === 'clear_credentials') {
             kpxcEvents.clearCredentials();
         } else if (req.action === 'fill_user_pass_with_specific_login') {
-            kpxc.fillFromPopup(req.id);
+            kpxc.fillFromPopup(req.id, req.uuid);
         } else if (req.action === 'fill_username_password') {
             sendMessage('page_set_manual_fill', ManualFill.BOTH);
             await kpxc.receiveCredentialsIfNecessary();
