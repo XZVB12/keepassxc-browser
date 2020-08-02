@@ -10,7 +10,8 @@ const acceptedOTPFields = [
     'code',
     'mfa',
     'otp',
-    'token'
+    'token',
+    'twofactor'
 ];
 
 var kpxcTOTPIcons = {};
@@ -28,26 +29,24 @@ kpxcTOTPIcons.deleteHiddenIcons = function() {
     kpxcUI.deleteHiddenIcons(kpxcTOTPIcons.icons, 'kpxc-totp-field');
 };
 
-kpxcTOTPIcons.isValid = function(field, forced) {
-    if (!field) {
-        return false;
-    }
-
+// Quick check for a valid TOTP field
+kpxcTOTPIcons.isAcceptedTOTPField = function(field) {
     const id = field.getLowerCaseAttribute('id');
     const name = field.getLowerCaseAttribute('name');
     const autocomplete = field.getLowerCaseAttribute('autocomplete');
 
-    /*if (autocomplete === 'one-time-code' || acceptedOTPFields.some(f => (id && id.includes(f)) || (name && name.includes(f)))) {
-        kpxcTOTPIcons.newIcon(c.totp, kpxc.databaseState);
-    }*/
+    if (autocomplete === 'one-time-code' || acceptedOTPFields.some(f => (id && id.includes(f)) || (name && name.includes(f)))) {
+        return true;
+    }
 
-    // TODO: Test
-    if (autocomplete !== 'one-time-code'
-        || !acceptedOTPFields.some(f => (id && id.includes(f))
-        || !(name && name.includes(f)))) {
+    return false;
+};
+
+kpxcTOTPIcons.isValid = function(field, forced) {
+    if (!field || !kpxcTOTPIcons.isAcceptedTOTPField(field)) {
         return false;
     }
-    
+
     if (!forced) {
         if (ignoredTypes.some(t => t === field.type)
             || field.offsetWidth < MINIMUM_INPUT_FIELD_WIDTH

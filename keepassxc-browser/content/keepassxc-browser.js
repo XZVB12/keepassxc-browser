@@ -299,6 +299,9 @@ kpxcFields.getAllCombinations = async function(inputs) {
 
             combinations.push(combination);
             usernameField = null;
+        } else if (kpxcTOTPIcons.isValid(input)) {
+            // Dynamically added TOTP field
+            kpxcIcons.addIcon(input, kpxcIcons.iconTypes.TOTP);
         } else {
             usernameField = input;
         }
@@ -786,7 +789,7 @@ kpxc.fillInCredentials = async function(combination, predefinedUsername, uuid, p
     }
 
     // Find the correct credentials
-    const selectedCredentials = kpxc.credentials.find(c => c.login === usernameValue && c.uuid === uuid);
+    const selectedCredentials = kpxc.credentials.find(c => c.uuid === uuid);
     if (!selectedCredentials) {
         return;
     }
