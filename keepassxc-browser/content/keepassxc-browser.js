@@ -61,6 +61,13 @@ kpxcIcons.initIcons = async function(combinations = []) {
 
     const addUsernameIcons = async function(c) {
         if (kpxc.settings.showLoginFormIcon && await kpxc.passwordFilled() === false) {
+
+            // Special case where everything else has been hidden, but a single password field is now displayed.
+            // For example PayPal and Amazon is handled like this.
+            if (c.username && !c.password && c.passwordInputs.length === 1) {
+                kpxcIcons.addIcon(c.passwordInputs[0], kpxcIcons.iconTypes.USERNAME);
+            }
+
             if (c.username) {
                 kpxcIcons.addIcon(c.username, kpxcIcons.iconTypes.USERNAME);
             } else if (!c.username && c.password) {
@@ -301,7 +308,15 @@ kpxcFields.getAllCombinations = async function(inputs) {
             usernameField = null;
         } else if (kpxcTOTPIcons.isValid(input)) {
             // Dynamically added TOTP field
-            kpxcIcons.addIcon(input, kpxcIcons.iconTypes.TOTP);
+            const combination = {
+                username: null,
+                password: null,
+                passwordInputs: [],
+                totp: input,
+                form: null
+            };
+
+            combinations.push(combination);
         } else {
             usernameField = input;
         }
@@ -685,7 +700,7 @@ kpxc.fillInFromActiveElement = async function(passOnly = false) {
     if (el.nodeName !== 'INPUT' || kpxc.credentials.length === 0) {
         return;
     } else if (kpxc.credentials.length > 1 && kpxc.combinations.length > 0) {
-        kpxcAutocomplete.showList(kpxc.combinations[0].username || kpxc.combinations[0].password);
+        kpxcAutocomplete.showList(el);
         return;
     }
 
@@ -997,7 +1012,8 @@ kpxc.initCombinations = async function(inputs = []) {
             kpxcForm.init(c.form, c);
         }
 
-        if (!kpxc.combinations.some(f => f === c)) {
+        // Don't allow duplicates
+        if (!kpxc.combinations.some(f => f.username === c.username && f.password === c.password && f.totp === c.totp && f.form === c.form)) {
             kpxc.combinations.push(c);
         }
     }
