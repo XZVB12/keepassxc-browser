@@ -33,7 +33,6 @@ page.redirectCount = 0;
 page.submitted = false;
 page.submittedCredentials = {};
 page.tabs = [];
-page.usernameFieldDetected = false;
 
 page.initSettings = async function() {
     try {
@@ -160,7 +159,6 @@ page.clearCredentials = function(tabId, complete) {
         return;
     }
 
-    page.usernameFieldDetected = false;
     page.passwordFilled = false;
     page.tabs[tabId].credentials = [];
     delete page.tabs[tabId].credentials;

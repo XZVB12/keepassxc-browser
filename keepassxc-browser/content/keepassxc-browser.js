@@ -356,9 +356,11 @@ kpxcFields.getAllPageInputs = async function(previousInputs = []) {
 
     // Show add username-only option for the site in popup
     if (!kpxc.singleInputEnabledForPage
-        && (fields.length === 1 && fields[0].getLowerCaseAttribute('type') !== 'password')
-        || (previousInputs.length === 1 && previousInputs[0].getLowerCaseAttribute('type') !== 'password')) {
+        && ((fields.length === 1 && fields[0].getLowerCaseAttribute('type') !== 'password')
+        || (previousInputs.length === 1 && previousInputs[0].getLowerCaseAttribute('type') !== 'password'))) {
         sendMessage('username_field_detected', true );
+    } else {
+        sendMessage('username_field_detected', false );
     }
 
     await kpxc.initCombinations(inputs);
@@ -602,7 +604,7 @@ kpxc.addToSitePreferences = async function(sites) {
     kpxc.initSitePreferences();
 
     // Returns a predefined URL for certain sites
-    const site = kpxcSites.definedURL(trimURL(window.top.location.href));
+    let site = kpxcSites.definedURL(trimURL(window.top.location.href));
 
     // Check if the site already exists -> update the current settings
     let siteExists = false;
@@ -615,6 +617,9 @@ kpxc.addToSitePreferences = async function(sites) {
     }
 
     if (!siteExists) {
+        // Add wildcard to the URL
+        site = site.slice(0, site.lastIndexOf('/') + 1) + '*';
+
         kpxc.settings['sitePreferences'].push({
             url: site,
             ignore: IGNORE_NOTHING,
@@ -1671,6 +1676,8 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
         } else if (req.action === 'redetect_fields') {
             const response = await sendMessage('load_settings');
             kpxc.settings = response;
+            kpxc.inputs = [];
+            kpxc.combinations = [];
             kpxc.initCredentialFields();
         } else if (req.action === 'remember_credentials') {
             kpxc.rememberCredentialsFromContextMenu();

@@ -29,7 +29,7 @@ kpxcEvent.showStatus = async function(tab, configured) {
         encryptionKeyUnrecognized: keepass.isEncryptionKeyUnrecognized,
         associated: keepass.isAssociated(),
         error: errorMessage || null,
-        usernameFieldDetected: page.usernameFieldDetected
+        usernameFieldDetected: page.tabs[tab.id].usernameFieldDetected
     };
 };
 
@@ -193,7 +193,7 @@ kpxcEvent.onMultipleFieldsPopup = function(tab) {
 };
 
 kpxcEvent.onUsernameFieldDetected = async function(tab, detected) {
-    page.usernameFieldDetected = detected;
+    page.tabs[tab.id].usernameFieldDetected = detected;
     return Promise.resolve();
 };
 
