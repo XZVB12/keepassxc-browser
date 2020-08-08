@@ -74,10 +74,9 @@ kpxcAutocomplete.showList = function(inputField) {
             await sendMessage('page_set_login_id', index);
 
             const usernameValue = this.getElementsByTagName('input')[0].value;
-            kpxcAutocomplete.fillPassword(usernameValue, index, c.uuid);
+            await kpxcAutocomplete.fillPassword(usernameValue, index, c.uuid);
             kpxcAutocomplete.closeList();
             inputField.focus();
-            document.body.removeChild(wrapper);
         });
 
         // These events prevent the double hover effect if both keyboard and mouse are used

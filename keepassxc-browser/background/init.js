@@ -48,9 +48,6 @@ browser.tabs.onRemoved.addListener((tabId, removeInfo) => {
  * @param {object} activeInfo
  */
 browser.tabs.onActivated.addListener(async function(activeInfo) {
-    // Remove possible credentials from old tab information
-    page.clearCredentials(page.currentTabId, true);
-
     try {
         const info = await browser.tabs.get(activeInfo.tabId);
         if (info && info.id) {

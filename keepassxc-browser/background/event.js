@@ -13,13 +13,16 @@ kpxcEvent.onMessage = async function(request, sender) {
     }
 };
 
-kpxcEvent.showStatus = async function(tab, configured) {
+kpxcEvent.showStatus = async function(tab, configured, internalPoll) {
     let keyId = null;
     if (configured && keepass.databaseHash !== '') {
         keyId = keepass.keyRing[keepass.databaseHash].id;
     }
 
-    browserAction.showDefault(tab);
+    if (!internalPoll) {
+        browserAction.showDefault(tab);
+    }
+
     const errorMessage = page.tabs[tab.id].errorMessage;
     return {
         identifier: keyId,
@@ -75,7 +78,7 @@ kpxcEvent.onGetStatus = async function(tab, args = []) {
         }
 
         const configured = await keepass.isConfigured();
-        return kpxcEvent.showStatus(tab, configured);
+        return kpxcEvent.showStatus(tab, configured, internalPoll);
     } catch (err) {
         console.log('Error: No status shown: ' + err);
         return Promise.reject();
@@ -106,7 +109,7 @@ kpxcEvent.lockDatabase = async function(tab) {
     }
 };
 
-kpxcEvent.onPopStack = function(tab) {
+kpxcEvent.onPopStack = async function(tab) {
     browserAction.stackPop(tab.id);
     browserAction.show(tab);
     return Promise.resolve();
@@ -117,7 +120,7 @@ kpxcEvent.onGetTabInformation = async function(tab) {
     return page.tabs[id];
 };
 
-kpxcEvent.onGetConnectedDatabase = function() {
+kpxcEvent.onGetConnectedDatabase = async function() {
     return Promise.resolve({
         count: Object.keys(keepass.keyRing).length,
         identifier: (keepass.keyRing[keepass.associated.hash]) ? keepass.keyRing[keepass.associated.hash].id : null
@@ -142,14 +145,14 @@ kpxcEvent.onUpdateAvailableKeePassXC = async function() {
     return (page.settings.checkUpdateKeePassXC > 0) ? keepass.keePassXCUpdateAvailable() : false;
 };
 
-kpxcEvent.onRemoveCredentialsFromTabInformation = function(tab) {
+kpxcEvent.onRemoveCredentialsFromTabInformation = async function(tab) {
     const id = tab.id || page.currentTabId;
     page.clearCredentials(id);
     page.clearSubmittedCredentials();
     return Promise.resolve();
 };
 
-kpxcEvent.onLoginPopup = function(tab, logins) {
+kpxcEvent.onLoginPopup = async function(tab, logins) {
     const stackData = {
         level: 1,
         iconType: 'questionmark',
@@ -162,12 +165,12 @@ kpxcEvent.onLoginPopup = function(tab, logins) {
     return Promise.resolve();
 };
 
-kpxcEvent.initHttpAuth = function() {
+kpxcEvent.initHttpAuth = async function() {
     httpAuth.init();
     return Promise.resolve();
 };
 
-kpxcEvent.onHTTPAuthPopup = function(tab, data) {
+kpxcEvent.onHTTPAuthPopup = async function(tab, data) {
     const stackData = {
         level: 1,
         iconType: 'questionmark',
@@ -180,7 +183,7 @@ kpxcEvent.onHTTPAuthPopup = function(tab, data) {
     return Promise.resolve();
 };
 
-kpxcEvent.onMultipleFieldsPopup = function(tab) {
+kpxcEvent.onMultipleFieldsPopup = async function(tab) {
     const stackData = {
         level: 1,
         iconType: 'normal',

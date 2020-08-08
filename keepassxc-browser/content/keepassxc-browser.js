@@ -46,6 +46,13 @@ kpxcIcons.addIcon = async function(field, iconType) {
     }
 };
 
+// Removes all icons from the page
+kpxcIcons.deleteAllIcons = function() {
+    kpxcUsernameIcons.icons = [];
+    kpxcPasswordIcons.icons = [];
+    kpxcTOTPIcons.icons = [];
+};
+
 // Delete all icons that have been hidden from the page view
 kpxcIcons.deleteHiddenIcons = function() {
     kpxcUsernameIcons.deleteHiddenIcons();
@@ -61,7 +68,6 @@ kpxcIcons.initIcons = async function(combinations = []) {
 
     const addUsernameIcons = async function(c) {
         if (kpxc.settings.showLoginFormIcon && await kpxc.passwordFilled() === false) {
-
             // Special case where everything else has been hidden, but a single password field is now displayed.
             // For example PayPal and Amazon is handled like this.
             if (c.username && !c.password && c.passwordInputs.length === 1) {
@@ -633,22 +639,17 @@ kpxc.addToSitePreferences = async function(sites) {
 
 // Clears all from the content and background scripts, including autocomplete
 kpxc.clearAllFromPage = function() {
-    kpxc.clearCredentials();
-    sendMessage('page_clear_logins');
-
-    // Switch back to default popup
-    sendMessage('get_status', [ true ]); // This is an internal function call
-};
-
-// Clears credential lists
-kpxc.clearCredentials = function() {
     kpxc.credentials = [];
+    kpxc.inputs = [];
     kpxcAutocomplete.elements = [];
     _called.retrieveCredentials = false;
 
     if (kpxc.settings.autoCompleteUsernames) {
         kpxcAutocomplete.closeList();
     }
+
+    // Switch back to default popup
+    sendMessage('get_status', [ true ]); // This is an internal function call
 };
 
 // Creates a new combination manually from active element
@@ -827,9 +828,7 @@ kpxc.fillInCredentials = async function(combination, predefinedUsername, uuid, p
     }
 
     // Fill username
-    if (combination.username/* && !passOnly*/
-        && (!combination.username.value || combination.username.value !== usernameValue)) {
-        //kpxc.setValueWithChange(combination.username, usernameValue);
+    if (combination.username && (!combination.username.value || combination.username.value !== usernameValue)) {
         if (!passOnly) {
             kpxc.setValueWithChange(combination.username, usernameValue);
         }
@@ -930,7 +929,9 @@ kpxc.getSite = function(sites) {
 // Identifies all forms in the page
 kpxc.identifyFormInputs = async function() {
     const forms = [];
-    for (const form of document.forms) {
+    const documentForms = document.forms;
+
+    for (const form of documentForms) {
         if (!kpxcFields.isVisible(form)) {
             continue;
         }
@@ -1037,6 +1038,13 @@ kpxc.initCredentialFields = async function() {
     // Search all remaining inputs from the page, ignore the previous input fields
     const pageInputs = await kpxcFields.getAllPageInputs(formInputs);
     if (formInputs.length === 0 && pageInputs.length === 0) {
+        // Run 'redetect_credentials' manually if no fields are found after a page load
+        setTimeout(async function() {
+            if (kpxc.inputs.length === 0 || kpxc.combinations.length === 0) {
+                kpxc.initCredentialFields();
+            }
+        }, 3000);
+
         return;
     }
 
@@ -1274,7 +1282,6 @@ kpxc.receiveCredentialsIfNecessary = async function() {
     return kpxc.credentials;
 };
 
-// TODO: Test this behavior
 kpxc.setPasswordFilled = async function(state) {
     await sendMessage('password_set_filled', state);
 };
@@ -1341,6 +1348,12 @@ kpxc.siteIgnored = async function(condition) {
 kpxc.triggerActivatedTab = async function() {
     await kpxc.updateDatabaseState();
     kpxcIcons.switchIcons();
+
+    if (kpxc.databaseState === DatabaseState.UNLOCKED && kpxc.credentials.length === 0) {
+        await kpxc.retrieveCredentials();
+    } else if (kpxc.credentials.length > 0) {
+        kpxc.initLoginPopup();
+    }
 };
 
 // Updates the database state to the content script
@@ -1383,6 +1396,14 @@ kpxcObserverHelper.inputTypes = [
     undefined, // Input field can be without any type. Include this and null to the list.
     null
 ];
+
+kpxcObserverHelper.observerConfig = {
+    subtree: true,
+    attributes: true,
+    childList: true,
+    characterData: true,
+    attributeFilter: [ 'style', 'class' ]
+};
 
 // Stores mutation style to an cache array
 kpxcObserverHelper.cacheStyle = function(mut, styleMutations) {
@@ -1553,7 +1574,7 @@ kpxcObserverHelper.initObserver = async function() {
                     kpxcObserverHelper.handleObserverRemove(mut.removedNodes[0]);
                 }
             } else if (mut.type === 'attributes' && mut.attributeName === 'class') {
-                // TODO: Attribute mutations don't know if an element is added or removed. How to detect this?
+                // TODO: Attribute mutations don't know if an element is added or removed. How to detect this? Is it necessary?
 
                 // Only accept targets with forms
                 const forms = mut.target.nodeName === 'FORM' ? mut.target : mut.target.getElementsByTagName('form');
@@ -1581,13 +1602,7 @@ kpxcObserverHelper.initObserver = async function() {
 
     // Define what element should be observed by the observer
     // and what types of mutations trigger the callback
-    kpxc.observer.observe(document, {
-        subtree: true,
-        attributes: true,
-        childList: true,
-        characterData: true,
-        attributeFilter: [ 'style', 'class' ]
-    });
+    kpxc.observer.observe(document, kpxcObserverHelper.observerConfig);
 };
 
 MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
@@ -1601,7 +1616,7 @@ const initContentScript = async function() {
         kpxc.settings = settings;
 
         if (await kpxc.siteIgnored()) {
-            return;
+            return Promise.resolve();
         }
 
         await kpxc.updateDatabaseState();
@@ -1620,7 +1635,7 @@ const initContentScript = async function() {
         if (creds && creds.submitted) {
             // If username field is not set, wait for credentials in kpxc.retrieveCredentialsCallback.
             if (!creds.username) {
-                return;
+                return Promise.resolve();
             }
 
             if (redirectCount >= kpxc.settings.redirectAllowance) {
@@ -1657,7 +1672,7 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
         } else if (req.action === 'choose_credential_fields') {
             kpxcDefine.init();
         } else if (req.action === 'clear_credentials') {
-            kpxcEvents.clearCredentials();
+            kpxc.clearAllFromPage();
         } else if (req.action === 'fill_user_pass_with_specific_login') {
             kpxc.fillFromPopup(req.id, req.uuid);
         } else if (req.action === 'fill_username_password') {

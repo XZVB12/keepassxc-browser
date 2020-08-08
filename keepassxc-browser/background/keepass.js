@@ -86,6 +86,27 @@ browser.storage.local.get({ 'latestKeePassXC': { 'version': '', 'lastChecked': n
     keepass.keyRing = item.keyRing;
 });
 
+const messageBuffer = {
+    buffer: [],
+
+    addMessage(msg) {
+        if (!this.buffer.includes(msg)) {
+            this.buffer.push(msg);
+        }
+    },
+
+    matchAndRemove(msg) {
+        for (let i = 0; i < this.buffer.length; ++i) {
+            if (msg.nonce && msg.nonce === keepass.incrementedNonce(this.buffer[i].nonce)) {
+                this.buffer.splice(i, 1);
+                return true;
+            }
+        }
+
+        return false;
+    }
+};
+
 keepass.sendNativeMessage = function(request, enableTimeout = false, timeoutValue) {
     return new Promise((resolve, reject) => {
         let timeout;
@@ -95,11 +116,16 @@ keepass.sendNativeMessage = function(request, enableTimeout = false, timeoutValu
         const listener = ((port, action) => {
             const handler = (msg) => {
                 if (msg && msg.action === action) {
-                    port.removeListener(handler);
-                    if (enableTimeout) {
-                        clearTimeout(timeout);
+                    // Only resolve a matching response or a notification (without nonce)
+                    if (!msg.nonce || messageBuffer.matchAndRemove(msg)) {
+                        port.removeListener(handler);
+                        if (enableTimeout) {
+                            clearTimeout(timeout);
+                        }
+
+                        resolve(msg);
+                        return;
                     }
-                    resolve(msg);
                 }
             };
             return handler;
@@ -121,6 +147,9 @@ keepass.sendNativeMessage = function(request, enableTimeout = false, timeoutValu
                 resolve(errorMessage);
             }, messageTimeout);
         }
+
+        // Store the request to the buffer
+        messageBuffer.addMessage(request);
 
         // Send the request
         if (keepass.nativePort) {
@@ -1169,7 +1198,8 @@ keepass.updatePopup = function(iconType) {
 keepass.updateDatabase = async function() {
     keepass.associated.value = false;
     keepass.associated.hash = null;
-    await keepass.testAssociation(null);
+    page.clearAllLogins(); // TEST
+    await keepass.testAssociation(null, [ true ]);
     const configured = await keepass.isConfigured();
     keepass.updatePopup(configured ? 'normal' : 'locked');
     keepass.updateDatabaseHashToContent();

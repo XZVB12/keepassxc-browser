@@ -151,17 +151,18 @@ page.initOpenedTabs = async function() {
 
 page.switchTab = function(tab) {
     browserAction.showDefault(tab);
-    browser.tabs.sendMessage(tab.id, { action: 'activated_tab' }).catch((e) => {});
+    browser.tabs.sendMessage(tab.id, { action: 'activated_tab' }).catch((e) => {
+        console.log('Cannot send activated_tab message: ', e);
+    });
 };
 
-page.clearCredentials = function(tabId, complete) {
+page.clearCredentials = async function(tabId, complete) {
     if (!page.tabs[tabId]) {
-        return;
+        return Promise.resolve();
     }
 
     page.passwordFilled = false;
     page.tabs[tabId].credentials = [];
-    delete page.tabs[tabId].credentials;
 
     if (complete) {
         page.clearLogins(tabId);
@@ -170,6 +171,8 @@ page.clearCredentials = function(tabId, complete) {
             action: 'clear_credentials'
         }).catch((e) => {});
     }
+
+    return Promise.resolve();
 };
 
 page.clearLogins = function(tabId) {
@@ -181,6 +184,13 @@ page.clearLogins = function(tabId) {
     page.tabs[tabId].loginList = [];
     page.currentRequest = {};
     page.passwordFilled = false;
+};
+
+// Clear all logins from all pages and update the content scripts
+page.clearAllLogins = function() {
+    for (const tabId of Object.keys(page.tabs)) {
+        page.clearCredentials(Number(tabId), true);
+    }
 };
 
 page.setSubmittedCredentials = function(submitted, username, password, url, oldCredentials, tabId) {
@@ -205,6 +215,7 @@ page.createTabEntry = function(tabId) {
         errorMessage: null,
         loginList: []
     };
+
     page.clearSubmittedCredentials();
 };
 
@@ -225,21 +236,21 @@ page.removePageInformationFromNotExistingTabs = async function() {
             }
         }
     }
+
+    return Promise.resolve();
 };
 
 // Retrieves the credentials. Returns cached values when found.
 // Page reload or tab switch clears the cache.
 page.retrieveCredentials = async function(tab, args = []) {
     const [ url, submitUrl ] = args;
-    //console.log('Url: ' + url + ', submitUrl: ', submitUrl);
-
     if (page.tabs[tab.id] && page.tabs[tab.id].credentials.length > 0) {
         return page.tabs[tab.id].credentials;
     }
 
     // Ignore duplicate requests
     if (page.currentRequest.url === url && page.currentRequest.submitUrl === submitUrl) {
-        return;
+        return [];
     } else {
         page.currentRequest.url = url;
         page.currentRequest.submitUrl = submitUrl;
@@ -247,7 +258,6 @@ page.retrieveCredentials = async function(tab, args = []) {
 
     const credentials = await keepass.retrieveCredentials(tab, args);
     page.tabs[tab.id].credentials = credentials;
-    //console.log('Credentials returned: ', credentials);
     return credentials;
 };
 
