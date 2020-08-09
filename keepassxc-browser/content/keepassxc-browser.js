@@ -719,15 +719,17 @@ kpxc.fillInFromActiveElement = async function(passOnly = false) {
         return;
     }
 
+    await sendMessage('page_set_login_id', 0);
     kpxc.fillInCredentials(combination, kpxc.credentials[0].login, kpxc.credentials[0].uuid, passOnly);
 };
 
 // Fill requested by Auto-Fill
-kpxc.fillFromAutofill = function() {
+kpxc.fillFromAutofill = async function() {
     if (kpxc.credentials.length !== 1 || kpxc.combinations.length !== 1) {
         return;
     }
 
+    await sendMessage('page_set_login_id', 0);
     kpxc.fillInCredentials(kpxc.combinations[0], kpxc.credentials[0].login, kpxc.credentials[0].uuid);
 
     // Generate popup-list of usernames + descriptions
