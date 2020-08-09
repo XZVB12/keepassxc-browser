@@ -69,7 +69,6 @@ kpxcIcons.initIcons = async function(combinations = []) {
 
             if (c.username && !c.username.readOnly) {
                 kpxcIcons.addIcon(c.username, kpxcIcons.iconTypes.USERNAME);
-            //} else if (!c.username && c.password) {
             } else if (c.password && (!c.username || (c.username && c.username.readOnly))) {
                 // Single password field
                 kpxcIcons.addIcon(c.password, kpxcIcons.iconTypes.USERNAME);
@@ -1573,16 +1572,13 @@ kpxcObserverHelper.initObserver = async function() {
             // Cache style mutations. We only need the last style mutation of the target.
             kpxcObserverHelper.cacheStyle(mut, styleMutations);
 
-            // TODO: Test if it's necessary to restrict this to document.body. It breaks some sites.
-            if (mut.type === 'childList'/* && mut.target === document.body*/) {
+            if (mut.type === 'childList') {
                 if (mut.addedNodes.length > 0) {
                     kpxcObserverHelper.handleObserverAdd(mut.addedNodes[0]);
                 } else if (mut.removedNodes.length > 0) {
                     kpxcObserverHelper.handleObserverRemove(mut.removedNodes[0]);
                 }
             } else if (mut.type === 'attributes' && mut.attributeName === 'class') {
-                // TODO: Attribute mutations don't know if an element is added or removed. How to detect this? Is it necessary?
-
                 // Only accept targets with forms
                 const forms = mut.target.nodeName === 'FORM' ? mut.target : mut.target.getElementsByTagName('form');
                 if (forms.length === 0) {
