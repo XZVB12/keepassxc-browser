@@ -46,13 +46,6 @@ kpxcIcons.addIcon = async function(field, iconType) {
     }
 };
 
-// Removes all icons from the page
-kpxcIcons.deleteAllIcons = function() {
-    kpxcUsernameIcons.icons = [];
-    kpxcPasswordIcons.icons = [];
-    kpxcTOTPIcons.icons = [];
-};
-
 // Delete all icons that have been hidden from the page view
 kpxcIcons.deleteHiddenIcons = function() {
     kpxcUsernameIcons.deleteHiddenIcons();
@@ -74,9 +67,10 @@ kpxcIcons.initIcons = async function(combinations = []) {
                 kpxcIcons.addIcon(c.passwordInputs[0], kpxcIcons.iconTypes.USERNAME);
             }
 
-            if (c.username) {
+            if (c.username && !c.username.readOnly) {
                 kpxcIcons.addIcon(c.username, kpxcIcons.iconTypes.USERNAME);
-            } else if (!c.username && c.password) {
+            //} else if (!c.username && c.password) {
+            } else if (c.password && (!c.username || (c.username && c.username.readOnly))) {
                 // Single password field
                 kpxcIcons.addIcon(c.password, kpxcIcons.iconTypes.USERNAME);
             }
@@ -478,7 +472,7 @@ kpxcFields.isVisible = function(elem) {
     if (elemStyle.visibility
         && (elemStyle.visibility === 'hidden' || elemStyle.visibility === 'collapse')
     ) {
-        //|| elemStyle.opacity === '0') {   // TODO: Remove? This breaks a lot of sites.
+        //|| elemStyle.opacity === '0') {   // TODO: Remove? This breaks a lot of sites. But removing it breaks another sites so..
         return false;
     }
 
@@ -929,14 +923,13 @@ kpxc.getSite = function(sites) {
 // Identifies all forms in the page
 kpxc.identifyFormInputs = async function() {
     const forms = [];
-    const documentForms = document.forms;
+    const documentForms = document.forms; // Cache the value just in case
 
     for (const form of documentForms) {
         if (!kpxcFields.isVisible(form)) {
             continue;
         }
 
-        // Ignore search forms
         if (kpxcFields.isSearchForm(form)) {
             continue;
         }
@@ -944,7 +937,7 @@ kpxc.identifyFormInputs = async function() {
         forms.push(form);
     }
 
-    // Identify input fields in the forms
+    // Identify input fields in the saved forms
     const inputs = [];
     for (const form of forms) {
         const formInputs = kpxcObserverHelper.getInputs(form);
@@ -1397,6 +1390,8 @@ kpxcObserverHelper.inputTypes = [
     null
 ];
 
+// Define what element should be observed by the observer
+// and what types of mutations trigger the callback
 kpxcObserverHelper.observerConfig = {
     subtree: true,
     attributes: true,
@@ -1578,7 +1573,8 @@ kpxcObserverHelper.initObserver = async function() {
             // Cache style mutations. We only need the last style mutation of the target.
             kpxcObserverHelper.cacheStyle(mut, styleMutations);
 
-            if (mut.type === 'childList' && mut.target === document.body) {
+            // TODO: Test if it's necessary to restrict this to document.body. It breaks some sites.
+            if (mut.type === 'childList'/* && mut.target === document.body*/) {
                 if (mut.addedNodes.length > 0) {
                     kpxcObserverHelper.handleObserverAdd(mut.addedNodes[0]);
                 } else if (mut.removedNodes.length > 0) {
@@ -1611,8 +1607,6 @@ kpxcObserverHelper.initObserver = async function() {
         }
     });
 
-    // Define what element should be observed by the observer
-    // and what types of mutations trigger the callback
     kpxc.observer.observe(document, kpxcObserverHelper.observerConfig);
 };
 
