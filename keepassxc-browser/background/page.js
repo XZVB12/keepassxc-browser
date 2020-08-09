@@ -137,12 +137,12 @@ page.initOpenedTabs = async function() {
         // Set initial tab-ID
         const currentTabs = await browser.tabs.query({ active: true, currentWindow: true });
         if (currentTabs.length === 0) {
-            return Promise.resolve();
+            return;
         }
 
         page.currentTabId = currentTabs[0].id;
         browserAction.show(currentTabs[0]);
-        return Promise.resolve();
+        return;
     } catch (err) {
         console.log('page.initOpenedTabs error: ' + err);
         return Promise.reject();
@@ -158,7 +158,7 @@ page.switchTab = function(tab) {
 
 page.clearCredentials = async function(tabId, complete) {
     if (!page.tabs[tabId]) {
-        return Promise.resolve();
+        return;
     }
 
     page.passwordFilled = false;
@@ -171,8 +171,6 @@ page.clearCredentials = async function(tabId, complete) {
             action: 'clear_credentials'
         }).catch((e) => {});
     }
-
-    return Promise.resolve();
 };
 
 page.clearLogins = function(tabId) {
@@ -205,7 +203,6 @@ page.setSubmittedCredentials = function(submitted, username, password, url, oldC
 page.clearSubmittedCredentials = async function() {
     page.submitted = false;
     page.submittedCredentials = {};
-    return Promise.resolve();
 };
 
 page.createTabEntry = function(tabId) {
@@ -236,8 +233,6 @@ page.removePageInformationFromNotExistingTabs = async function() {
             }
         }
     }
-
-    return Promise.resolve();
 };
 
 // Retrieves the credentials. Returns cached values when found.
@@ -274,7 +269,6 @@ page.getLoginId = async function(tab) {
 
 page.setLoginId = async function(tab, loginId) {
     page.loginId = loginId;
-    return Promise.resolve();
 };
 
 page.getManualFill = async function(tab) {
@@ -283,7 +277,6 @@ page.getManualFill = async function(tab) {
 
 page.setManualFill = async function(tab, manualFill) {
     page.manualFill = manualFill;
-    return Promise.resolve();
 };
 
 page.getSubmitted = async function(tab) {
@@ -298,5 +291,4 @@ page.getSubmitted = async function(tab) {
 page.setSubmitted = async function(tab, args = []) {
     const [ submitted, username, password, url, oldCredentials ] = args;
     page.setSubmittedCredentials(submitted, username, password, url, oldCredentials, tab.id);
-    return Promise.resolve();
 };

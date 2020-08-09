@@ -721,7 +721,7 @@ kpxc.fillInFromActiveElement = async function(passOnly = false) {
     }
 
     // Do not allow filling password to a non-password field
-    if (passOnly && !combination.password) {
+    if (passOnly && combination && !combination.password) {
         kpxcUI.createNotification('warning', tr('fieldsNoPasswordField'));
         return;
     }
@@ -1043,7 +1043,7 @@ kpxc.initCredentialFields = async function() {
             if (kpxc.inputs.length === 0 || kpxc.combinations.length === 0) {
                 kpxc.initCredentialFields();
             }
-        }, 3000);
+        }, 2000);
 
         return;
     }
@@ -1199,7 +1199,7 @@ kpxc.rememberCredentials = async function(usernameValue, passwordValue, urlValue
         }
     }
 
-    // Show the banner
+    // Show the Credential Banner
     kpxcBanner.create({
         username: usernameValue,
         password: passwordValue,
@@ -1407,20 +1407,31 @@ kpxcObserverHelper.observerConfig = {
 
 // Stores mutation style to an cache array
 kpxcObserverHelper.cacheStyle = function(mut, styleMutations) {
-    if (mut.attributeName === 'style' && mut.target.hasAttribute('style') && (mut.target.style.display || mut.target.style.zIndex)) {
+    if (mut.attributeName !== 'style') {
+        return;
+    }
+
+    // If the target is inside a form we are monitoring, calculate the CSS style for better compatibility.
+    // getComputedStyle() is very slow, so we cannot do that for every style target.
+    let style = mut.target.style;
+    if (kpxcForm.formIdentified(mut.target.parentNode)) {
+        style = getComputedStyle(mut.target);
+    }
+
+    if (style.display || style.zIndex) {
         if (!styleMutations.some(m => m.target === mut.target)) {
             styleMutations.push({
                 target: mut.target,
-                display: mut.target.style.display,
-                zIndex: mut.target.style.zIndex
+                display: style.display,
+                zIndex: style.zIndex
             });
         } else {
             const currentStyle = styleMutations.find(m => m.target === mut.target);
             if (currentStyle
-                && (currentStyle.display !== mut.target.style.display
-                || currentStyle.zIndex !== mut.target.zIndex)) {
-                currentStyle.display = mut.target.style.display;
-                currentStyle.zIndex = mut.target.zIndex;
+                && (currentStyle.display !== style.display
+                || currentStyle.zIndex !== style.zIndex)) {
+                currentStyle.display = style.display;
+                currentStyle.zIndex = style.zIndex;
             }
         }
     }
@@ -1592,7 +1603,7 @@ kpxcObserverHelper.initObserver = async function() {
 
         // Handle cached style mutations
         for (const styleMut of styleMutations) {
-            if (styleMut.target.style.display !== 'none' && styleMut.target.style.display !== '') {
+            if (styleMut.display !== 'none' && styleMut.display !== '') {
                 kpxcObserverHelper.handleObserverAdd(styleMut.target);
             } else {
                 kpxcObserverHelper.handleObserverRemove(styleMut.target);
@@ -1616,7 +1627,7 @@ const initContentScript = async function() {
         kpxc.settings = settings;
 
         if (await kpxc.siteIgnored()) {
-            return Promise.resolve();
+            return;
         }
 
         await kpxc.updateDatabaseState();
@@ -1635,7 +1646,7 @@ const initContentScript = async function() {
         if (creds && creds.submitted) {
             // If username field is not set, wait for credentials in kpxc.retrieveCredentialsCallback.
             if (!creds.username) {
-                return Promise.resolve();
+                return;
             }
 
             if (redirectCount >= kpxc.settings.redirectAllowance) {
@@ -1660,7 +1671,7 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
     if ('action' in req) {
         // Don't allow any actions if the site is ignored
         if (await kpxc.siteIgnored()) {
-            return Promise.resolve();
+            return;
         }
 
         if (req.action === 'activated_tab') {
@@ -1699,7 +1710,5 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
         } else if (req.action === 'show_password_generator') {
             kpxcPasswordDialog.trigger();
         }
-
-        return Promise.resolve();
     }
 });

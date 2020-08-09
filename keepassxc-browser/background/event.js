@@ -63,7 +63,6 @@ kpxcEvent.onLoadKeyRing = async function() {
 kpxcEvent.onSaveSettings = async function(tab, settings) {
     browser.storage.local.set({ 'settings': settings });
     kpxcEvent.onLoadSettings(tab);
-    return Promise.resolve();
 };
 
 kpxcEvent.onGetStatus = async function(tab, args = []) {
@@ -112,7 +111,6 @@ kpxcEvent.lockDatabase = async function(tab) {
 kpxcEvent.onPopStack = async function(tab) {
     browserAction.stackPop(tab.id);
     browserAction.show(tab);
-    return Promise.resolve();
 };
 
 kpxcEvent.onGetTabInformation = async function(tab) {
@@ -149,7 +147,6 @@ kpxcEvent.onRemoveCredentialsFromTabInformation = async function(tab) {
     const id = tab.id || page.currentTabId;
     page.clearCredentials(id);
     page.clearSubmittedCredentials();
-    return Promise.resolve();
 };
 
 kpxcEvent.onLoginPopup = async function(tab, logins) {
@@ -162,12 +159,10 @@ kpxcEvent.onLoginPopup = async function(tab, logins) {
     browserAction.stackUnshift(stackData, tab.id);
     page.tabs[tab.id].loginList = logins;
     browserAction.show(tab);
-    return Promise.resolve();
 };
 
 kpxcEvent.initHttpAuth = async function() {
     httpAuth.init();
-    return Promise.resolve();
 };
 
 kpxcEvent.onHTTPAuthPopup = async function(tab, data) {
@@ -180,24 +175,10 @@ kpxcEvent.onHTTPAuthPopup = async function(tab, data) {
     browserAction.stackUnshift(stackData, tab.id);
     page.tabs[tab.id].loginList = data;
     browserAction.show(tab);
-    return Promise.resolve();
-};
-
-kpxcEvent.onMultipleFieldsPopup = async function(tab) {
-    const stackData = {
-        level: 1,
-        iconType: 'normal',
-        popup: 'popup_multiple-fields.html'
-    };
-
-    browserAction.stackUnshift(stackData, tab.id);
-    browserAction.show(tab);
-    return Promise.resolve();
 };
 
 kpxcEvent.onUsernameFieldDetected = async function(tab, detected) {
     page.tabs[tab.id].usernameFieldDetected = detected;
-    return Promise.resolve();
 };
 
 kpxcEvent.passwordGetFilled = async function() {
@@ -206,7 +187,6 @@ kpxcEvent.passwordGetFilled = async function() {
 
 kpxcEvent.passwordSetFilled = async function(tab, state) {
     page.passwordFilled = state;
-    return Promise.resolve();
 };
 
 kpxcEvent.getColorTheme = async function(tab) {
@@ -221,7 +201,6 @@ kpxcEvent.pageClearLogins = async function(tab, alreadyCalled) {
     if (!alreadyCalled) {
         page.clearLogins(tab.id);
     }
-    return Promise.resolve();
 };
 
 // All methods named in this object have to be declared BEFORE this!
@@ -259,7 +238,6 @@ kpxcEvent.messageHandlers = {
     'password_set_filled': kpxcEvent.passwordSetFilled,
     'pop_stack': kpxcEvent.onPopStack,
     'popup_login': kpxcEvent.onLoginPopup,
-    'popup_multiple-fields': kpxcEvent.onMultipleFieldsPopup,
     'reconnect': kpxcEvent.onReconnect,
     'remove_credentials_from_tab_information': kpxcEvent.onRemoveCredentialsFromTabInformation,
     'retrieve_credentials': page.retrieveCredentials,

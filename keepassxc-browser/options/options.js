@@ -48,8 +48,6 @@ options.saveSetting = async function(name) {
     await browser.runtime.sendMessage({
         action: 'load_settings'
     });
-
-    return Promise.resolve();
 };
 
 options.saveSettings = async function() {
@@ -66,8 +64,6 @@ options.saveKeyRing = async function() {
     await browser.runtime.sendMessage({
         action: 'load_keyring'
     });
-
-    return Promise.resolve();
 };
 
 options.initGeneralSettings = function() {

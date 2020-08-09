@@ -138,7 +138,10 @@ kpxcBanner.create = async function(credentials = {}) {
 kpxcBanner.saveNewCredentials = async function(credentials = {}) {
     const result = await sendMessage('get_database_groups');
 
-    if (!result.defaultGroupAlwaysAsk && (result.defaultGroup !== '' && result.defaultGroup !== DEFAULT_BROWSER_GROUP)) {
+    if (!result.defaultGroupAlwaysAsk
+        && result.groups
+        && result.groups.length > 0
+        && (result.defaultGroup !== '' && result.defaultGroup !== DEFAULT_BROWSER_GROUP)) {
         // Another group name has been specified
         const [ gname, guuid ] = kpxcBanner.getDefaultGroup(result.groups[0].children, result.defaultGroup);
         if (gname === '' && guuid === '') {
