@@ -748,7 +748,12 @@ kpxc.fillFromPopup = async function(id, uuid) {
 // Fill requested from TOTP icon
 kpxc.fillFromTOTP = async function(target) {
     const el = target || document.activeElement;
-    const index = await sendMessage('page_get_login_id');
+    let index = await sendMessage('page_get_login_id');
+
+    // Use the first credential available if not set
+    if (index === undefined) {
+        index = 0;
+    }
 
     if (index >= 0 && kpxc.credentials[index]) {
         // Check the value from StringFields
@@ -767,7 +772,7 @@ kpxc.fillFromTOTP = async function(target) {
 };
 
 // Fill requested from username icon
-kpxc.fillFromUsernameIcon = function(combination) {
+kpxc.fillFromUsernameIcon = async function(combination) {
     if (kpxc.credentials.length === 0) {
         return;
     } else if (kpxc.credentials.length > 1) {
@@ -775,6 +780,7 @@ kpxc.fillFromUsernameIcon = function(combination) {
         return;
     }
 
+    await sendMessage('page_set_login_id', 0);
     kpxc.fillInCredentials(combination, kpxc.credentials[0].login, kpxc.credentials[0].uuid);
 };
 
