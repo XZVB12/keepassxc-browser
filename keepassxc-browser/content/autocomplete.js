@@ -217,7 +217,7 @@ kpxcAutocomplete.fillPassword = async function(value, index, uuid) {
     combination.loginId = index;
 
     const manualFill = await sendMessage('page_get_manual_fill');
-    await kpxc.fillInCredentials(combination, value, uuid, manualFill === ManualFill.PASS);
+    await kpxc.fillInCredentials(combination, value, uuid, manualFill === ManualFill.PASSWORD);
     kpxcAutocomplete.input.setAttribute('fetched', true);
 };
 
@@ -230,9 +230,9 @@ kpxcAutocomplete.updatePosition = function(inputField, elem) {
     const rect = inputField.getBoundingClientRect();
     div.style.minWidth = Pixels(inputField.offsetWidth);
 
-    if (_bodyStyle.position.toLowerCase() === 'relative') {
-        div.style.top = Pixels(rect.top - _bodyRect.top + document.scrollingElement.scrollTop + inputField.offsetHeight);
-        div.style.left = Pixels(rect.left - _bodyRect.left + document.scrollingElement.scrollLeft);
+    if (kpxcUI.bodyStyle.position.toLowerCase() === 'relative') {
+        div.style.top = Pixels(rect.top - kpxcUI.bodyRect.top + document.scrollingElement.scrollTop + inputField.offsetHeight);
+        div.style.left = Pixels(rect.left - kpxcUI.left + document.scrollingElement.scrollLeft);
     } else {
         div.style.top = Pixels(rect.top + document.scrollingElement.scrollTop + inputField.offsetHeight);
         div.style.left = Pixels(rect.left + document.scrollingElement.scrollLeft);

@@ -21,6 +21,7 @@ const kpxcIcons = {};
 kpxcIcons.icons = [];
 kpxcIcons.iconTypes = { USERNAME: 0, PASSWORD: 1, TOTP: 2 };
 
+// Adds an icon to input field
 kpxcIcons.addIcon = async function(field, iconType) {
     if (!field || iconType < 0 || iconType > 2) {
         return;
@@ -46,19 +47,8 @@ kpxcIcons.addIcon = async function(field, iconType) {
     }
 };
 
-// Delete all icons that have been hidden from the page view
-kpxcIcons.deleteHiddenIcons = function() {
-    kpxcUsernameIcons.deleteHiddenIcons();
-    kpxcPasswordIcons.deleteHiddenIcons();
-    kpxcTOTPIcons.deleteHiddenIcons();
-};
-
-// Initializes all icons needed to be shown
-kpxcIcons.initIcons = async function(combinations = []) {
-    if (combinations.length === 0) {
-        return;
-    }
-
+// Adds all necessary icons to a saved form
+kpxcIcons.addIconsFromForm = async function(form) {
     const addUsernameIcons = async function(c) {
         if (kpxc.settings.showLoginFormIcon && await kpxc.passwordFilled() === false) {
             // Special case where everything else has been hidden, but a single password field is now displayed.
@@ -92,12 +82,28 @@ kpxcIcons.initIcons = async function(combinations = []) {
         }
     };
 
+    await Promise.all([
+        await addUsernameIcons(form),
+        await addPasswordIcons(form),
+        await addTOTPIcons(form)
+    ]);
+};
+
+// Delete all icons that have been hidden from the page view
+kpxcIcons.deleteHiddenIcons = function() {
+    kpxcUsernameIcons.deleteHiddenIcons();
+    kpxcPasswordIcons.deleteHiddenIcons();
+    kpxcTOTPIcons.deleteHiddenIcons();
+};
+
+// Initializes all icons needed to be shown
+kpxcIcons.initIcons = async function(combinations = []) {
+    if (combinations.length === 0) {
+        return;
+    }
+
     for (const form of kpxcForm.savedForms) {
-        await Promise.all([
-            await addUsernameIcons(form),
-            await addPasswordIcons(form),
-            await addTOTPIcons(form)
-        ]);
+        await kpxcIcons.addIconsFromForm(form);
     }
 
     // Check for other combinations that are not in any form
@@ -106,11 +112,7 @@ kpxcIcons.initIcons = async function(combinations = []) {
             continue;
         }
 
-        await Promise.all([
-            await addUsernameIcons(c),
-            await addPasswordIcons(c),
-            await addTOTPIcons(c)
-        ]);
+        await kpxcIcons.addIconsFromForm(c);
     }
 };
 
@@ -169,10 +171,8 @@ kpxcForm.getFormSubmitButton = function(form) {
 
     // Try to find similar buttons outside the form which are added via 'form' property
     for (const e of form.elements) {
-        if ((e.nodeName === 'BUTTON' && e.type === 'button')
-            || (e.nodeName === 'BUTTON' && e.type === 'submit')
-            || (e.nodeName === 'INPUT' && e.type === 'button')
-            || (e.nodeName === 'BUTTON' && e.type === '')) {
+        if ((e.nodeName === 'BUTTON' && (e.type === 'button' || e.type === 'submit' || e.type === ''))
+            || (e.nodeName === 'INPUT' && e.type === 'button')) {
             return e;
         }
     }
@@ -683,7 +683,7 @@ kpxc.detectDatabaseChange = async function(response) {
             // is handled here when the opened database has been regognized. It's not a pretty hack.
             const manualFill = await sendMessage('page_get_manual_fill');
             if (manualFill !== ManualFill.NONE) {
-                await kpxc.fillInFromActiveElement(manualFill === ManualFill.PASS);
+                await kpxc.fillInFromActiveElement(manualFill === ManualFill.PASSWORD);
                 await sendMessage('page_set_manual_fill', ManualFill.NONE);
             }
         } else if (!response.connected) {
@@ -1689,7 +1689,7 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
             await kpxc.receiveCredentialsIfNecessary();
             kpxc.fillInFromActiveElement();
         } else if (req.action === 'fill_password') {
-            sendMessage('page_set_manual_fill', ManualFill.PASS);
+            sendMessage('page_set_manual_fill', ManualFill.PASSWORD);
             await kpxc.receiveCredentialsIfNecessary();
             kpxc.fillInFromActiveElement(true); // passOnly to true
         } else if (req.action === 'fill_totp') {

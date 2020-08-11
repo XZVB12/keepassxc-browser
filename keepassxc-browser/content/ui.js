@@ -8,10 +8,6 @@ const DatabaseState = {
     UNLOCKED: 2
 };
 
-// Cache these values
-const _bodyRect = document.body.getBoundingClientRect();
-const _bodyStyle = getComputedStyle(document.body);
-
 // jQuery style wrapper for querySelector()
 const $ = function(elem) {
     return document.querySelector(elem);
@@ -54,6 +50,8 @@ class Icon {
 }
 
 const kpxcUI = {};
+kpxcUI.bodyRect = document.body.getBoundingClientRect();
+kpxcUI.bodyStyle = getComputedStyle(document.body);
 kpxcUI.mouseDown = false;
 
 // Wrapper for creating elements
@@ -108,9 +106,9 @@ kpxcUI.setIconPosition = function(icon, field) {
     const size = (document.dir !== 'rtl') ? Number(icon.getAttribute('size')) : 0;
     const offset = kpxcUI.calculateIconOffset(field, size);
 
-    if (_bodyStyle.position.toLowerCase() === 'relative') {
-        icon.style.top = Pixels(rect.top - _bodyRect.top + document.scrollingElement.scrollTop + offset + 1);
-        icon.style.left = Pixels(rect.left - _bodyRect.left + document.scrollingElement.scrollLeft + field.offsetWidth - size - offset);
+    if (kpxcUI.bodyStyle.position.toLowerCase() === 'relative') {
+        icon.style.top = Pixels(rect.top - kpxcUI.bodyRect.top + document.scrollingElement.scrollTop + offset + 1);
+        icon.style.left = Pixels(rect.left - kpxcUI.left + document.scrollingElement.scrollLeft + field.offsetWidth - size - offset);
     } else {
         icon.style.top = Pixels(rect.top + document.scrollingElement.scrollTop + offset + 1);
         icon.style.left = Pixels(rect.left + document.scrollingElement.scrollLeft + field.offsetWidth - size - offset);

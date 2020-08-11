@@ -1198,7 +1198,7 @@ keepass.updatePopup = function(iconType) {
 keepass.updateDatabase = async function() {
     keepass.associated.value = false;
     keepass.associated.hash = null;
-    page.clearAllLogins(); // TEST
+    page.clearAllLogins();
     await keepass.testAssociation(null, [ true ]);
     const configured = await keepass.isConfigured();
     keepass.updatePopup(configured ? 'normal' : 'locked');

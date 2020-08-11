@@ -34,7 +34,7 @@ const AssociatedAction = {
 
 const ManualFill = {
     NONE: 0,
-    PASS: 1,
+    PASSWORD: 1,
     BOTH: 2
 };
 
