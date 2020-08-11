@@ -108,11 +108,6 @@ kpxcEvent.lockDatabase = async function(tab) {
     }
 };
 
-kpxcEvent.onPopStack = async function(tab) {
-    browserAction.stackPop(tab.id);
-    browserAction.show(tab);
-};
-
 kpxcEvent.onGetTabInformation = async function(tab) {
     const id = tab.id || page.currentTabId;
     return page.tabs[id];
@@ -150,15 +145,13 @@ kpxcEvent.onRemoveCredentialsFromTabInformation = async function(tab) {
 };
 
 kpxcEvent.onLoginPopup = async function(tab, logins) {
-    const stackData = {
-        level: 1,
+    const popupData = {
         iconType: 'questionmark',
-        popup: 'popup_login.html'
+        popup: 'popup_login'
     };
 
-    browserAction.stackUnshift(stackData, tab.id);
     page.tabs[tab.id].loginList = logins;
-    browserAction.show(tab);
+    browserAction.show(tab, popupData);
 };
 
 kpxcEvent.initHttpAuth = async function() {
@@ -166,15 +159,13 @@ kpxcEvent.initHttpAuth = async function() {
 };
 
 kpxcEvent.onHTTPAuthPopup = async function(tab, data) {
-    const stackData = {
-        level: 1,
+    const popupData = {
         iconType: 'questionmark',
-        popup: 'popup_httpauth.html'
+        popup: 'popup_httpauth'
     };
 
-    browserAction.stackUnshift(stackData, tab.id);
     page.tabs[tab.id].loginList = data;
-    browserAction.show(tab);
+    browserAction.show(tab, popupData);
 };
 
 kpxcEvent.onUsernameFieldDetected = async function(tab, detected) {
@@ -236,7 +227,6 @@ kpxcEvent.messageHandlers = {
     'page_set_submitted': page.setSubmitted,
     'password_get_filled': kpxcEvent.passwordGetFilled,
     'password_set_filled': kpxcEvent.passwordSetFilled,
-    'pop_stack': kpxcEvent.onPopStack,
     'popup_login': kpxcEvent.onLoginPopup,
     'reconnect': kpxcEvent.onReconnect,
     'remove_credentials_from_tab_information': kpxcEvent.onRemoveCredentialsFromTabInformation,

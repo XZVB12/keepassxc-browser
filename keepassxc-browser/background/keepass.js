@@ -1188,9 +1188,7 @@ keepass.reconnect = async function(tab, connectionTimeout) {
 
 keepass.updatePopup = function(iconType) {
     if (page && page.tabs.length > 0) {
-        const data = page.tabs[page.currentTabId].stack[page.tabs[page.currentTabId].stack.length - 1];
-        data.iconType = iconType;
-        browserAction.show({ 'id': page.currentTabId });
+        browserAction.updateIcon(undefined, iconType);
     }
 };
 

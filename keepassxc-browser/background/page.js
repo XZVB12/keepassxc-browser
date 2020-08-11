@@ -34,6 +34,11 @@ page.submitted = false;
 page.submittedCredentials = {};
 page.tabs = [];
 
+page.popupData = {
+    iconType: 'normal',
+    popup: 'popup'
+};
+
 page.initSettings = async function() {
     try {
         const item = await browser.storage.local.get({ 'settings': {} });
@@ -141,8 +146,7 @@ page.initOpenedTabs = async function() {
         }
 
         page.currentTabId = currentTabs[0].id;
-        browserAction.show(currentTabs[0]);
-        return;
+        browserAction.showDefault(currentTabs[0]);
     } catch (err) {
         console.log('page.initOpenedTabs error: ' + err);
         return Promise.reject();
@@ -208,7 +212,6 @@ page.clearSubmittedCredentials = async function() {
 page.createTabEntry = function(tabId) {
     page.tabs[tabId] = {
         credentials: [],
-        stack: [],
         errorMessage: null,
         loginList: []
     };
