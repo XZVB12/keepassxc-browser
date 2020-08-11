@@ -137,51 +137,47 @@ kpxcBanner.create = async function(credentials = {}) {
 
 kpxcBanner.saveNewCredentials = async function(credentials = {}) {
     const result = await sendMessage('get_database_groups');
+    if (!result || !result.groups) {
+        console.log('Error: Empty result from get_database_groups');
+        return;
+    }
 
-    if (!result.defaultGroupAlwaysAsk
-        && result.groups
-        && result.groups.length > 0
-        && (result.defaultGroup !== '' && result.defaultGroup !== DEFAULT_BROWSER_GROUP)) {
-        // Another group name has been specified
-        const [ gname, guuid ] = kpxcBanner.getDefaultGroup(result.groups[0].children, result.defaultGroup);
-        if (gname === '' && guuid === '') {
-            // Root group is used -> use the root path
+    if (!result.defaultGroupAlwaysAsk) {
+        if (result.defaultGroup === '' || result.defaultGroup === DEFAULT_BROWSER_GROUP) {
+             // Default group is used
+             const args = [ credentials.username, credentials.password, credentials.url ];
+             const res = await sendMessage('add_credentials', args);
+             kpxcBanner.verifyResult(res);
+             return;
+        } else {
+            // A specified group is used
+            let gname = '';
+            let guuid = '';
+
             if (result.defaultGroup.toLowerCase() === 'root') {
                 result.defaultGroup = '/';
+                gname = result.groups[0].name;
+                guuid = result.groups[0].uuid;
+            } else {
+                [ gname, guuid ] = kpxcBanner.getDefaultGroup(result.groups[0].children, result.defaultGroup);
+                if (gname === '' && guuid === '') {
+                    // Create a new group
+                    const newGroup = await sendMessage('create_new_group', [ result.defaultGroup ]);
+                    if (newGroup.name && newGroup.uuid) {
+                        const res = await sendMessage('add_credentials', [ credentials.username, credentials.password, credentials.url, newGroup.name, newGroup.uuid ]);
+                        kpxcBanner.verifyResult(res);
+                    } else {
+                        kpxcUI.createNotification('error', tr('rememberErrorCreatingNewGroup'));
+                    }
+
+                    return;
+                }
             }
 
-            // Create a new group
-            const newGroup = await sendMessage('create_new_group', [ result.defaultGroup ]);
-            if (newGroup.name && newGroup.uuid) {
-                const res = await sendMessage('add_credentials', [ credentials.username, credentials.password, credentials.url, newGroup.name, newGroup.uuid ]);
-                kpxcBanner.verifyResult(res);
-            } else {
-                kpxcUI.createNotification('error', tr('rememberErrorCreatingNewGroup'));
-            }
+            const res = await sendMessage('add_credentials', [ credentials.username, credentials.password, credentials.url, gname, guuid ]);
+            kpxcBanner.verifyResult(res);
             return;
         }
-
-        const res = await sendMessage('add_credentials', [ credentials.username, credentials.password, credentials.url, gname, guuid ]);
-        kpxcBanner.verifyResult(res);
-        return;
-    } else if ((result.groups === undefined || (result.groups.length > 0 && result.groups[0].children.length === 0))
-        || (!result.defaultGroupAlwaysAsk && (result.defaultGroup === '' || result.defaultGroup === DEFAULT_BROWSER_GROUP))) {
-        // Only the Root group and no KeePassXC-Browser passwords -> save to default
-        // Or when default group is not set and defaultGroupAskAlways is disabled -> save to default
-        const args = [ credentials.username, credentials.password, credentials.url ];
-
-        // If root group is defined by the user, and there's no default browser group, save the credentials to the root group
-        if (result.groups !== undefined
-            && result.groups.length > 0
-            && result.groups[0].children.length === 0
-            && (result.defaultGroup.toLowerCase() === 'root'
-                || result.defaultGroup === '/')) {
-            args.push(result.groups[0].name, result.groups[0].uuid);
-        }
-
-        const res = await sendMessage('add_credentials', args);
-        kpxcBanner.verifyResult(res);
-        return;
     }
 
     const addChildren = function(group, parentElement, depth) {

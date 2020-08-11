@@ -171,10 +171,8 @@ options.initGeneralSettings = function() {
 
     $('#defaultGroupButton').click(async function() {
         const value = $('#defaultGroup').val();
-        if (value.length > 0) {
-            options.settings['defaultGroup'] = value;
-            await options.saveSettings();
-        }
+        options.settings['defaultGroup'] = (value.length > 0 ? value : '');
+        await options.saveSettings();
     });
 
     $('#defaultGroupButtonReset').click(async function() {
