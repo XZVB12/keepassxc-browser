@@ -62,7 +62,7 @@ $(async () => {
 
     $('#lock-database-button').click((e) => {
         browser.runtime.sendMessage({
-            action: 'lock-database'
+            action: 'lock_database'
         });
         $('#credentialsList').hide();
         $('#database-not-opened').show();

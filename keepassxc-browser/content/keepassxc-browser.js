@@ -768,7 +768,9 @@ kpxc.fillFromTOTP = async function(target) {
                 }
             }
         } else if (kpxc.credentials[index].totp && kpxc.credentials[index].totp.length > 0) {
-            kpxc.setValue(el, kpxc.credentials[index].totp);
+            // Retrieve a new TOTP value
+            const totp = await sendMessage('get_totp', [ kpxc.credentials[index].uuid, kpxc.credentials[index].totp ]);
+            kpxc.setValue(el, totp);
         }
     }
 };

@@ -36,7 +36,8 @@ const kpActions = {
     DATABASE_LOCKED: 'database-locked',
     DATABASE_UNLOCKED: 'database-unlocked',
     GET_DATABASE_GROUPS: 'get-database-groups',
-    CREATE_NEW_GROUP: 'create-new-group'
+    CREATE_NEW_GROUP: 'create-new-group',
+    GET_TOTP: 'get-totp'
 };
 
 const kpErrors = {
@@ -803,6 +804,50 @@ keepass.createNewGroup = async function(tab, args = []) {
     } catch (err) {
         console.log('createNewGroup failed: ', err);
         return [];
+    }
+};
+
+keepass.getTotp = async function(tab, args = []) {
+    const [ uuid, oldTotp ] = args;
+    if (!keepass.compareVersion('2.6.1', keepass.currentKeePassXC, true)) {
+        return oldTotp;
+    }
+
+    const taResponse = await keepass.testAssociation(tab, [ false ]);
+    if (!taResponse || !keepass.isConnected) {
+        return;
+    }
+
+    const kpAction = kpActions.GET_TOTP;
+    const [ nonce, incrementedNonce ] = keepass.getNonces();
+
+    const messageData = {
+        action: kpAction,
+        uuid: uuid
+    };
+
+    try {
+        const request = keepass.buildRequest(kpAction, keepass.encrypt(messageData, nonce), nonce, keepass.clientID);
+        const response = await keepass.sendNativeMessage(request);
+        if (response.message && response.nonce) {
+            const res = keepass.decrypt(response.message, response.nonce);
+            if (!res) {
+                keepass.handleError(tab, kpErrors.CANNOT_DECRYPT_MESSAGE);
+                return;
+            }
+
+            const message = nacl.util.encodeUTF8(res);
+            const parsed = JSON.parse(message);
+            if (keepass.verifyResponse(parsed, incrementedNonce) && parsed.totp) {
+                return parsed.totp;
+            }
+        } else if (response.error && response.errorCode) {
+            keepass.handleError(tab, response.errorCode, response.error);
+        }
+
+        return;
+    } catch (err) {
+        console.log('getTotp failed: ', err);
     }
 };
 
