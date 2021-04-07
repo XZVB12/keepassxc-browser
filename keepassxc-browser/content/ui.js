@@ -1,6 +1,15 @@
 'use strict';
 
-const MINIMUM_INPUT_FIELD_WIDTH = 60;
+const MIN_TOTP_INPUT_LENGTH = 6;
+const MAX_TOTP_INPUT_LENGTH = 10;
+const MIN_INPUT_FIELD_WIDTH_PX = 8;
+const MIN_INPUT_FIELD_OFFSET_WIDTH = 60;
+
+const DatabaseState = {
+    DISCONNECTED: 0,
+    LOCKED: 1,
+    UNLOCKED: 2
+};
 
 // jQuery style wrapper for querySelector()
 const $ = function(elem) {
@@ -14,7 +23,13 @@ const Pixels = function(value) {
 
 // Basic icon class
 class Icon {
-    constructor() {
+    constructor(field, databaseState = DatabaseState.DISCONNECTED, segmented = false) {
+        this.databaseState = databaseState;
+        this.icon = null;
+        this.inputField = null;
+        this.rtl = kpxcUI.isRTL(field);
+        this.segmented = segmented;
+
         try {
             this.observer = new IntersectionObserver((entries) => {
                 kpxcUI.updateFromIntersectionObserver(this, entries);
@@ -45,6 +60,11 @@ class Icon {
 
 const kpxcUI = {};
 kpxcUI.mouseDown = false;
+
+if (document.body) {
+    kpxcUI.bodyRect = document.body.getBoundingClientRect();
+    kpxcUI.bodyStyle = getComputedStyle(document.body);
+}
 
 // Wrapper for creating elements
 kpxcUI.createElement = function(type, classes, attributes, textContent) {
@@ -84,7 +104,7 @@ kpxcUI.monitorIconPosition = function(iconClass) {
 
 kpxcUI.updateIconPosition = function(iconClass) {
     if (iconClass.inputField && iconClass.icon) {
-        kpxcUI.setIconPosition(iconClass.icon, iconClass.inputField);
+        kpxcUI.setIconPosition(iconClass.icon, iconClass.inputField, iconClass.rtl, iconClass.segmented);
     }
 };
 
@@ -93,30 +113,59 @@ kpxcUI.calculateIconOffset = function(field, size) {
     return (offset < 0) ? 0 : offset;
 };
 
-kpxcUI.setIconPosition = function(icon, field) {
+kpxcUI.setIconPosition = function(icon, field, rtl = false, segmented = false) {
     const rect = field.getBoundingClientRect();
-    const bodyRect = document.body.getBoundingClientRect();
-    const bodyStyle = getComputedStyle(document.body);
-    const size = (document.dir !== 'rtl') ? Number(icon.getAttribute('size')) : 0;
+    const size = Number(icon.getAttribute('size'));
     const offset = kpxcUI.calculateIconOffset(field, size);
+    let left = kpxcUI.bodyStyle.position.toLowerCase() === 'relative' ? rect.left - kpxcUI.bodyRect.left : rect.left;
+    const top = kpxcUI.bodyStyle.position.toLowerCase() === 'relative' ? rect.top - kpxcUI.bodyRect.top : rect.top;
 
-    if (bodyStyle.position.toLowerCase() === 'relative') {
-        icon.style.top = Pixels(rect.top - bodyRect.top + document.scrollingElement.scrollTop + offset + 1);
-        icon.style.left = Pixels(rect.left - bodyRect.left + document.scrollingElement.scrollLeft + field.offsetWidth - size - offset);
-    } else {
-        icon.style.top = Pixels(rect.top + document.scrollingElement.scrollTop + offset + 1);
-        icon.style.left = Pixels(rect.left + document.scrollingElement.scrollLeft + field.offsetWidth - size - offset);
+    // Add more space for the icon to show it at the right side of the field if TOTP fields are segmented
+    if (segmented) {
+        left += size + 10;
     }
+
+    icon.style.top = Pixels(top + document.scrollingElement.scrollTop + offset + 1);
+    icon.style.left = rtl
+                    ? Pixels((left + document.scrollingElement.scrollLeft) + offset)
+                    : Pixels(left + document.scrollingElement.scrollLeft + field.offsetWidth - size - offset);
 };
 
 kpxcUI.deleteHiddenIcons = function(iconList, attr) {
+    const deletedIcons = [];
     for (const icon of iconList) {
         if (icon.inputField && !kpxcFields.isVisible(icon.inputField)) {
             const index = iconList.indexOf(icon);
             icon.removeIcon(attr);
             iconList.splice(index, 1);
+            deletedIcons.push(icon.inputField);
         }
     }
+
+    // Remove the same icons from kpxcIcons.icons array
+    for (const input of deletedIcons) {
+        const index = kpxcIcons.icons.findIndex(e => e.field === input);
+        if (index >= 0) {
+            kpxcIcons.icons.splice(index, 1);
+        }
+    }
+};
+
+kpxcUI.isRTL = function(field) {
+    if (!field) {
+        return false;
+    }
+
+    const style = getComputedStyle(field);
+    if (style.textAlign.toLowerCase() === 'left') {
+        return false;
+    } else if (style.textAlign.toLowerCase() === 'right') {
+        return true;
+    }
+
+    return kpxcFields.traverseParents(field,
+        f => [ 'ltr', 'rtl' ].includes(f.getLowerCaseAttribute('dir')),
+        f => ({ 'ltr': false, 'rtl': true })[f.getLowerCaseAttribute('dir')]);
 };
 
 /**
@@ -138,8 +187,8 @@ kpxcUI.updateFromIntersectionObserver = function(iconClass, entries) {
 
             // Wait for possible DOM animations
             setTimeout(() => {
-                kpxcUI.setIconPosition(iconClass.icon, entry.target);
-            }, 500);
+                kpxcUI.setIconPosition(iconClass.icon, entry.target, iconClass.rtl, iconClass.segmented);
+            }, 400);
         }
     }
 };
@@ -225,11 +274,19 @@ document.addEventListener('mousemove', function(e) {
     }
 });
 
-document.addEventListener('mousedown', function() {
+document.addEventListener('mousedown', function(e) {
+    if (!e.isTrusted) {
+        return;
+    }
+
     kpxcUI.mouseDown = true;
 });
 
-document.addEventListener('mouseup', function() {
+document.addEventListener('mouseup', function(e) {
+    if (!e.isTrusted) {
+        return;
+    }
+
     kpxcPasswordDialog.selected = null;
     kpxcDefine.selected = null;
     kpxcUI.mouseDown = false;

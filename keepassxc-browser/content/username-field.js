@@ -2,6 +2,7 @@
 
 const kpxcUsernameIcons = {};
 kpxcUsernameIcons.icons = [];
+kpxcUsernameIcons.detectedFields = [];
 
 kpxcUsernameIcons.newIcon = function(field, databaseState = DatabaseState.DISCONNECTED) {
     kpxcUsernameIcons.icons.push(new UsernameFieldIcon(field, databaseState));
@@ -15,22 +16,32 @@ kpxcUsernameIcons.deleteHiddenIcons = function() {
     kpxcUI.deleteHiddenIcons(kpxcUsernameIcons.icons, 'kpxc-username-field');
 };
 
+kpxcUsernameIcons.isValid = function(field) {
+    if (!field
+        || field.offsetWidth < MIN_INPUT_FIELD_OFFSET_WIDTH
+        || field.readOnly
+        || kpxcIcons.hasIcon(field)
+        || !kpxcFields.isVisible(field)) {
+        return false;
+    }
+
+    return true;
+};
+
 
 class UsernameFieldIcon extends Icon {
     constructor(field, databaseState = DatabaseState.DISCONNECTED) {
-        super();
-        this.databaseState = databaseState;
-        this.icon = null;
-        this.inputField = null;
+        super(field, databaseState);
 
-        if (this.initField(field)) {
-            kpxcUI.monitorIconPosition(this);
-        }
+        this.initField(field);
+        kpxcUI.monitorIconPosition(this);
     }
 
     switchIcon(state) {
         if (!this.icon) {
             return;
+        } else {
+            this.observer.disconnect();
         }
 
         this.icon.classList.remove('lock', 'lock-moz', 'unlock', 'unlock-moz', 'disconnected', 'disconnected-moz');
@@ -40,18 +51,6 @@ class UsernameFieldIcon extends Icon {
 }
 
 UsernameFieldIcon.prototype.initField = function(field) {
-    if (!field
-        || field.offsetWidth < MINIMUM_INPUT_FIELD_WIDTH
-        || field.readOnly
-        || field.getAttribute('kpxc-username-field') === 'true'
-        || field.getAttribute('kpxc-totp-field') === 'true'
-        || (field.hasAttribute('kpxc-defined') && field.getAttribute('kpxc-defined') !== 'username')
-        || !kpxcFields.isVisible(field)) {
-        return false;
-    }
-
-    field.setAttribute('kpxc-username-field', 'true');
-
     // Observer the visibility
     if (this.observer) {
         this.observer.observe(field);
@@ -59,16 +58,9 @@ UsernameFieldIcon.prototype.initField = function(field) {
 
     this.createIcon(field);
     this.inputField = field;
-    return true;
 };
 
-UsernameFieldIcon.prototype.createIcon = function(target) {
-    // Remove any existing password generator icons from the input field
-    if (target.getAttribute('kpxc-password-field')) {
-        kpxcPasswordDialog.removeIcon(target);
-    }
-
-    const field = target;
+UsernameFieldIcon.prototype.createIcon = function(field) {
     const className = getIconClassName(this.databaseState);
 
     // Size the icon dynamically, but not greater than 24 or smaller than 14
@@ -103,7 +95,7 @@ UsernameFieldIcon.prototype.createIcon = function(target) {
         iconClicked(field, icon);
     });
 
-    kpxcUI.setIconPosition(icon, field);
+    kpxcUI.setIconPosition(icon, field, this.rtl);
     this.icon = icon;
 
     const styleSheet = document.createElement('link');
@@ -124,20 +116,18 @@ const iconClicked = async function(field, icon) {
         return;
     }
 
-    const connected = await browser.runtime.sendMessage({ action: 'is_connected' });
+    const connected = await sendMessage('is_connected');
     if (!connected) {
         kpxcUI.createNotification('error', tr('errorNotConnected'));
         return;
     }
 
-    const databaseHash = await browser.runtime.sendMessage({ action: 'check_database_hash' });
+    const databaseHash = await sendMessage('check_database_hash');
     if (databaseHash === '') {
         // Triggers database unlock
-        _called.manualFillRequested = ManualFill.BOTH;
-        await browser.runtime.sendMessage({
-            action: 'get_database_hash',
-            args: [ false, true ] // Set triggerUnlock to true
-        });
+        await sendMessage('page_set_manual_fill', ManualFill.BOTH);
+        await sendMessage('get_database_hash', [ false, true ]); // Set triggerUnlock to true
+        field.focus();
     }
 
     if (icon.className.includes('unlock')) {
@@ -165,11 +155,6 @@ const getIconText = function(state) {
 };
 
 const fillCredentials = async function(field) {
-    const fieldId = field.getAttribute('data-kpxc-id');
-    kpxcFields.prepareId(fieldId);
-
-    const givenType = field.type === 'password' ? 'password' : 'username';
-    const combination = await kpxcFields.getCombination(givenType, fieldId);
-
-    kpxc.fillInCredentials(combination, givenType === 'password', false);
+    const combination = await kpxcFields.getCombination(field);
+    kpxc.fillFromUsernameIcon(combination);
 };

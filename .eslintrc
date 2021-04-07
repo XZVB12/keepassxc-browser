@@ -17,6 +17,7 @@
         "block-scoped-var": "off",
         "brace-style": ["warn", "1tbs"],
         "camelcase": "warn",
+        "class-methods-use-this": "off",
         "comma-dangle": "off",
         "computed-property-spacing": ["error", "never"],
         "consistent-return": "off",
@@ -84,6 +85,7 @@
         "Icon": true,
         "isEdge": true,
         "isFirefox": true,
+        "IGNORE_AUTOSUBMIT": true,
         "IGNORE_FULL": true,
         "IGNORE_NORMAL": true,
         "IGNORE_NOTHING": true,
@@ -91,7 +93,6 @@
         "jQuery": true,
         "keepass": true,
         "kpxc": true,
-        "kpxcAutocomplete": true,
         "kpxcBanner": true,
         "kpxcDefine": true,
         "kpxcFields": true,
@@ -99,7 +100,9 @@
         "kpxcPasswordDialog": true,
         "kpxcPasswordIcons": true,
         "kpxcSites": true,
+        "kpxcTOTPAutocomplete": true,
         "kpxcTOTPIcons": true,
+        "kpxcUserAutocomplete": true,
         "kpxcUsernameIcons": true,
         "kpxcUI": true,
         "kpxcUsernameField": true,
@@ -112,6 +115,7 @@
         "slashNeededForUrl": true,
         "statusResponse": true,
         "tr": true,
-        "trimURL", true
+        "trimURL": true,
+        "PREDEFINED_SITELIST": true
     }
 }

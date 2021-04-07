@@ -4,10 +4,12 @@
     try {
         await keepass.migrateKeyRing();
         await page.initSettings();
+        await page.initSitePreferences();
         await page.initOpenedTabs();
         await httpAuth.init();
         await keepass.reconnect(null, 5000); // 5 second timeout for the first connect
         await keepass.enableAutomaticReconnect();
+        await keepass.updateDatabase();
     } catch (e) {
         console.log('init.js failed');
     }
@@ -48,9 +50,6 @@ browser.tabs.onRemoved.addListener((tabId, removeInfo) => {
  * @param {object} activeInfo
  */
 browser.tabs.onActivated.addListener(async function(activeInfo) {
-    // Remove possible credentials from old tab information
-    page.clearCredentials(page.currentTabId, true);
-
     try {
         const info = await browser.tabs.get(activeInfo.tabId);
         if (info && info.id) {
@@ -108,8 +107,9 @@ const contextMenuItems = [
     { title: tr('contextMenuFillUsernameAndPassword'), action: 'fill_username_password' },
     { title: tr('contextMenuFillPassword'), action: 'fill_password' },
     { title: tr('contextMenuFillTOTP'), action: 'fill_totp' },
+    { title: tr('contextMenuFillAttribute'), id: 'fill_attribute', visible: false },
     { title: tr('contextMenuShowPasswordGenerator'), action: 'show_password_generator' },
-    { title: tr('contextMenuSaveCredentials'), action: 'remember_credentials' }
+    { title: tr('contextMenuSaveCredentials'), action: 'save_credentials' }
 ];
 
 const menuContexts = [ 'editable' ];
@@ -123,6 +123,8 @@ for (const item of contextMenuItems) {
     browser.contextMenus.create({
         title: item.title,
         contexts: menuContexts,
+        visible: item.visible,
+        id: item.id,
         onclick: (info, tab) => {
             browser.tabs.sendMessage(tab.id, {
                 action: item.action
@@ -135,7 +137,10 @@ for (const item of contextMenuItems) {
 
 // Listen for keyboard shortcuts specified by user
 browser.commands.onCommand.addListener(async (command) => {
-    if (contextMenuItems.some(e => e.action === command)) {
+    if (contextMenuItems.some(e => e.action === command)
+        || command === 'redetect_fields'
+        || command === 'choose_credential_fields'
+        || command === 'retrive_credentials_forced') {
         const tabs = await browser.tabs.query({ active: true, currentWindow: true });
         if (tabs.length) {
             browser.tabs.sendMessage(tabs[0].id, { action: command });

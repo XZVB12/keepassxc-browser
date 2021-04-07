@@ -1,13 +1,27 @@
 'use strict';
 
-const ignoreRegex = /(zip|postal).*code/i;
+const ignoreRegex = /(bank|coupon|postal|user|zip).*code|comment|author|error/i;
 const ignoredTypes = [ 'email', 'password', 'username' ];
+
+const acceptedOTPFields = [
+    '2fa',
+    'auth',
+    'challenge',
+    'code',
+    'idvpin',
+    'mfa',
+    'otp',
+    'token',
+    'twofa',
+    'two-factor',
+    'twofactor'
+];
 
 var kpxcTOTPIcons = {};
 kpxcTOTPIcons.icons = [];
 
-kpxcTOTPIcons.newIcon = function(field, databaseState = DatabaseState.DISCONNECTED, forced = false) {
-    kpxcTOTPIcons.icons.push(new TOTPFieldIcon(field, databaseState, forced));
+kpxcTOTPIcons.newIcon = function(field, databaseState = DatabaseState.DISCONNECTED, segmented = false) {
+    kpxcTOTPIcons.icons.push(new TOTPFieldIcon(field, databaseState, segmented));
 };
 
 kpxcTOTPIcons.switchIcon = function(state) {
@@ -18,35 +32,37 @@ kpxcTOTPIcons.deleteHiddenIcons = function() {
     kpxcUI.deleteHiddenIcons(kpxcTOTPIcons.icons, 'kpxc-totp-field');
 };
 
+// Quick check for a valid TOTP field
+kpxcTOTPIcons.isAcceptedTOTPField = function(field) {
+    const id = field.getLowerCaseAttribute('id');
+    const name = field.getLowerCaseAttribute('name');
+    const autocomplete = field.getLowerCaseAttribute('autocomplete');
+    const placeholder = field.getLowerCaseAttribute('placeholder');
 
-class TOTPFieldIcon extends Icon {
-    constructor(field, databaseState = DatabaseState.DISCONNECTED, forced = false) {
-        super();
-        this.icon = null;
-        this.inputField = null;
-        this.databaseState = databaseState;
-
-        if (this.initField(field, forced)) {
-            kpxcUI.monitorIconPosition(this);
-        }
+    // Checks if the field id, name or placeholder includes some of the acceptedOTPFields but not any from ignoredTypes
+    if (autocomplete === 'one-time-code'
+        || (acceptedOTPFields.some(f => (id && id.includes(f)) || (name && name.includes(f) || placeholder && placeholder.includes(f))))
+            && !ignoredTypes.some(f => (id && id.includes(f)) || (name && name.includes(f) || placeholder && placeholder.includes(f)))) {
+        return true;
     }
-}
 
-TOTPFieldIcon.prototype.initField = function(field, forced) {
-    if (!field) {
-        return;
+    return false;
+};
+
+kpxcTOTPIcons.isValid = function(field, forced) {
+    if (!field || !kpxcTOTPIcons.isAcceptedTOTPField(field)) {
+        return false;
     }
 
     if (!forced) {
         if (ignoredTypes.some(t => t === field.type)
-            || field.offsetWidth < MINIMUM_INPUT_FIELD_WIDTH
+            || field.offsetWidth < MIN_INPUT_FIELD_OFFSET_WIDTH
             || field.size < 2
-            || (field.maxLength > 0 && (field.maxLength < 6 || field.maxLength > 8))
+            || (field.maxLength > 0 && (field.maxLength < MIN_TOTP_INPUT_LENGTH || field.maxLength > kpxcSites.expectedTOTPMaxLength()))
             || ignoredTypes.some(t => t === field.autocomplete)
-            || field.getAttribute('kpxc-totp-field') === 'true'
-            || (field.hasAttribute('kpxc-defined') && field.getAttribute('kpxc-defined') !== 'totp')
             || field.id.match(ignoreRegex)
             || field.name.match(ignoreRegex)
+            || field.placeholder.match(ignoreRegex)
             || field.readOnly) {
             return false;
         }
@@ -56,19 +72,29 @@ TOTPFieldIcon.prototype.initField = function(field, forced) {
         }
     }
 
-    field.setAttribute('kpxc-totp-field', 'true');
+    return true;
+};
 
+class TOTPFieldIcon extends Icon {
+    constructor(field, databaseState = DatabaseState.DISCONNECTED, segmented = false) {
+        super(field, databaseState, segmented);
+
+        this.initField(field, segmented);
+        kpxcUI.monitorIconPosition(this);
+    }
+}
+
+TOTPFieldIcon.prototype.initField = function(field, segmented) {
     // Observer the visibility
     if (this.observer) {
         this.observer.observe(field);
     }
 
-    this.createIcon(field);
+    this.createIcon(field, segmented);
     this.inputField = field;
-    return false;
 };
 
-TOTPFieldIcon.prototype.createIcon = function(field) {
+TOTPFieldIcon.prototype.createIcon = function(field, segmented = false) {
     const className = (isFirefox() ? 'moz' : 'default');
 
     // Size the icon dynamically, but not greater than 24 or smaller than 14
@@ -97,10 +123,10 @@ TOTPFieldIcon.prototype.createIcon = function(field) {
 
         e.preventDefault();
         await kpxc.receiveCredentialsIfNecessary();
-        kpxc.fillInFromActiveElementTOTPOnly(field);
+        kpxc.fillFromTOTP(field);
     });
 
-    kpxcUI.setIconPosition(icon, field);
+    kpxcUI.setIconPosition(icon, field, this.rtl, segmented);
     this.icon = icon;
 
     const styleSheet = document.createElement('link');
